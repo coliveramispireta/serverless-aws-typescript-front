@@ -1,0 +1,442 @@
+@import "src/styles/amthemevars.module.scss";
+
+.paperSvg {
+  width: 44px;
+  height: 44px;
+}
+
+.AMLogin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto;
+  width: 288px;
+  padding-top: 15%;
+}
+
+.AMLoginForm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-width: 288px;
+}
+
+.headerLogin {
+  display: flex;
+
+  .imageLogin {
+    display: flex;
+    padding-top: 27px;
+    padding-left: 14px;
+  }
+}
+
+.loginCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.containerCleanCard {
+  // box-shadow: 1px 1px 4px 0px rgba(0, 0, 0, 0.5) !important;
+}
+
+.divPlataforma {
+  width: 100%;
+  height: 107px;
+  margin-top: 19px;
+  display: flex;
+  flex-direction: row;
+  border: none !important;
+}
+
+.divPlataformaImage {
+  width: 84px;
+  height: 107px;
+  flex-shrink: 0;
+  border-radius: 3px 0px 0px 3px;
+  background-size: cover;
+  background-image: url("/img/webp/100e647af4d1a9934676879830b66c45.webp");
+  background-position: center;
+}
+
+.textoPlataformaFacturacion {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding-left: 13px;
+  padding-top: 11px;
+  color: #666;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 17px;
+}
+
+.textoPlataforma {
+  font-size: 11px;
+  line-height: 17px;
+  /* 154.545% */
+}
+
+.botonVideo {
+  display: flex;
+  width: 57px;
+  height: 18px;
+  margin-top: 1px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 18px;
+  /* 180% */
+}
+
+.divFacturacion {
+  width: 100%;
+  height: 107px;
+  display: flex;
+  margin-top: 25px;
+  flex-direction: row;
+}
+
+.divFacturacionImage {
+  width: 84px;
+  height: 107px;
+  flex-shrink: 0;
+  border-radius: 3px 0px 0px 3px;
+  // background-size: cover;
+  // background-image: url("/img/webp/b5e353b6d2c0bbf5295709f84188b9e7.webp");
+  background-image: url("/img/svg/img-card-ayuda.svg");
+  background-position: center;
+  background-color: #eeece9;
+  background-repeat: no-repeat;
+}
+
+.containerLineGray {
+  border-top: #e5e5e5 1px solid;
+  border-right: #e5e5e5 1px solid;
+  border-bottom: #e5e5e5 1px solid;
+  border-left: none;
+  padding-bottom: 10px !important;
+}
+
+.textoFacturacion {
+  font-size: 9px;
+  line-height: 14px;
+  /* 155.556% */
+}
+
+.tituloLogin {
+  color: #0b2343;
+  font-size: 16px;
+  line-height: 22px;
+  /* 137.5% */
+}
+
+.tituloSubtextContainer {
+  padding-top: 8px;
+  padding-bottom: 32px;
+  /* 137.5% */
+}
+
+.tituloPlataforma {
+  color: #0b2343;
+  font-size: 14px;
+  line-height: 18px;
+  /* 128.571% */
+}
+
+.tituloFacturacion {
+  color: #002b5c;
+  font-size: 14px;
+  line-height: 20px;
+  /* 142.857% */
+}
+
+.textoLogin {
+  color: #666;
+  font-size: 11px;
+  line-height: 19.995px;
+  /* 181.774% */
+  padding-top: 25px;
+  margin-right: 38px;
+  padding-left: 10px;
+}
+
+.botonManual {
+  display: grid;
+  justify-content: start;
+  margin-top: 1px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 18px;
+  /* 180% */
+}
+
+.botonesLogin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.botonLogin {
+  width: 182px;
+  height: 40px;
+  font-size: 10px !important;
+  line-height: normal !important;
+  letter-spacing: -0.1px !important;
+  padding: 11px 8px !important;
+  margin-bottom: 13px !important;
+}
+
+.botonSecondary {
+  margin-bottom: 14px;
+}
+
+.textoInvitacionCuenta {
+  color: #727171;
+  font-size: 10px !important;
+}
+
+.pieLogin {
+  padding-top: 25px;
+  width: 100%;
+  min-height: 95px !important;
+  color: $AMMedGray__main;
+  text-align: center;
+  font-size: 12px;
+  line-height: normal;
+  letter-spacing: -0.1px;
+}
+
+.pieLogin_fila1 {
+  display: flex;
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: space-around;
+}
+
+.pieLogin_fila2 {
+  padding-top: 3px;
+  display: flex;
+  flex-direction: column;
+  align-content: center;
+  justify-content: space-around;
+}
+
+//Los tamaños de las pantallas ya estan definidas en las variables globales
+//Utilizamos unicamente mobile y tablet que son los que definen estos batos
+//Pero en particular, la grid cambia de orden solo en desktop
+
+//Estos estilos se aplican a partir del tamaño de tablet
+@media (min-width: #{$Tablet}px) {
+  .paperSvg {
+    width: 60px;
+    height: 60px;
+    transform: scale(1.3636); /* Escala para simular el aumento de tamaño */
+    transform-origin: top left; /* Cambia el punto de origen de la transformación */
+    overflow: hidden;
+  }
+
+  .AMLogin {
+    padding-top: 10%;
+    width: 422px;
+  }
+
+  .AMLoginForm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-width: 288px;
+  }
+
+  .headerLogin {
+    display: flex;
+
+    .imageLogin {
+      display: flex;
+      padding-left: 37px;
+      padding-left: 28px;
+    }
+  }
+
+  .textoLogin {
+    color: #666;
+    font-size: 14px;
+    line-height: 19.995px;
+    /* 181.774% */
+    padding-top: 27px;
+    margin-right: 38px;
+    padding-left: 22px;
+  }
+
+  .tituloLogin {
+    color: #0b2343;
+    font-size: 24px;
+    line-height: 32px;
+    /* 137.5% */
+  }
+
+  .tituloSubtextContainer {
+    padding-top: 14px;
+    padding-bottom: 30px;
+    /* 137.5% */
+  }
+
+  .botonLogin {
+    width: 200px;
+    height: 45px;
+    font-size: 12px !important;
+    line-height: normal !important;
+    letter-spacing: -0.1px !important;
+    padding: 11px 8px !important;
+    margin-bottom: 19px !important;
+  }
+
+  .divPlataforma {
+    height: 140px;
+    margin-top: 35px;
+
+    p {
+      padding-top: 8px;
+      padding-bottom: 10px;
+    }
+  }
+
+  .divFacturacion {
+    height: 140px;
+    margin-top: 35px;
+    border: none !important;
+    p {
+      padding-top: 8px;
+      padding-bottom: 10px;
+    }
+  }
+
+  .divPlataformaImage {
+    width: 203px;
+    height: 140px;
+    border-radius: 3px 3px 0px 0px;
+  }
+  .divFacturacionImage {
+    width: 202px;
+    height: 140px;
+    border-radius: 3px 3px 0px 0px;
+  }
+
+  .textoPlataformaFacturacion {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    padding-left: 16px;
+    padding-top: 11px;
+    color: #666;
+    font-size: 12px;
+    font-style: normal;
+    line-height: 18px;
+  }
+
+  .containerLineGray {
+    border-top: #e5e5e5 1px solid;
+    border-right: #e5e5e5 1px solid;
+    border-bottom: #e5e5e5 1px solid;
+    border-left: none;
+    padding-bottom: 10px !important;
+  }
+
+  .textoInvitacionCuenta {
+    font-size: 12px !important;
+  }
+}
+
+//Estos estilos se aplican a partir del tamaño de Desktop
+@media (min-width: #{$Desktop}px) {
+  .AMLogin {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 1022px;
+  }
+
+  .loginCard {
+    width: 446px;
+    min-height: 413px;
+  }
+
+  .AMLoginForm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .headerLogin {
+    display: flex;
+
+    .imageLogin {
+      display: flex;
+      padding-top: 37px;
+      padding-left: 28px;
+    }
+  }
+
+  .textoLogin {
+    color: #666;
+    font-size: 14px;
+    line-height: 19.995px;
+    /* 181.774% */
+    padding-top: 27px;
+    margin-right: 38px;
+    padding-left: 22px;
+  }
+
+  .botonLogin {
+    width: 254.742px;
+    height: 50px;
+    font-size: 14px !important ;
+    padding: 15px 42px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .divPlataforma {
+    width: 256px;
+    height: 264px;
+    flex-direction: column;
+  }
+
+  .divFacturacion {
+    width: 256px;
+    height: 264px;
+    flex-direction: column;
+  }
+
+  .divPlataformaImage {
+    width: 256px;
+    height: 123.574px;
+  }
+  .divFacturacionImage {
+    width: 256px;
+    height: 123.574px;
+  }
+
+  .containerLineGray {
+    border-top: none;
+    border-right: #e5e5e5 1px solid;
+    border-bottom: #e5e5e5 1px solid;
+    border-left: #e5e5e5 1px solid;
+    padding-bottom: 12px !important;
+  }
+
+  .containerLineGray.cunia {
+    padding-bottom: 37px !important;
+  }
+
+  .pieLogin {
+    height: 71px;
+  }
+}

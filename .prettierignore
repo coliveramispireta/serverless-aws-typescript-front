@@ -1,0 +1,39 @@
+# Node.js
+node_modules
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+appspec.yml
+buildspec.yml
+
+# Build y salida de Next.js
+.next
+out
+
+# Archivos de configuración
+*.config.js
+*.config.cjs
+*.config.mjs
+*.config.ts
+
+# Archivos de producción
+dist
+build
+
+# Archivos estáticos y dependencias externas
+public
+
+# Archivos de logs y caché
+.npm
+.vscode
+.idea
+.DS_Store
+.env
+.env.local
+.env.development
+.env.production
+
+# Scripts Bash (Opcional, si no quieres que Prettier los toque)
+scrips
+*.sh
+

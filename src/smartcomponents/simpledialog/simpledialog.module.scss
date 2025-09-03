@@ -1,0 +1,31 @@
+@import "src/styles/amthemevars.module.scss";
+.dialogTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: $AMLightBlue__main;
+}
+
+.dialogTitle span {
+  color: white;
+}
+
+.closeIcon {
+  margin-bottom: 40px;
+}
+
+.dialogTitleExcludeHeader {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  background-color: $AMWhite__main;
+}
+
+.dialogTitleExcludeHeader .dialogTitle {
+  justify-content: flex-end;
+  background-color: $AMWhite__main;
+}
+
+.dialogTitleExcludeHeader .closeIcon {
+  margin-bottom: -20px;
+}

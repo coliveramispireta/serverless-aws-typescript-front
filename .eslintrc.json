@@ -1,0 +1,98 @@
+{
+  "extends": [
+    "prettier" // Integra Prettier para formatear el código automáticamente
+  ],
+
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2021": true
+  },
+
+  "parser": "@typescript-eslint/parser", // Usa el parser de TypeScript
+
+  "plugins": [
+    "react", // Soporte para React
+    "@typescript-eslint", // Soporte para TypeScript
+    "react-hooks", // Soporte para hooks de React
+    "jsx-a11y", // Mejora la accesibilidad en JSX
+    "import", // Mejora la organización de imports
+    "prettier", // Integra Prettier
+    "@next/next"
+  ],
+
+  "rules": {
+    // // 📌 PRIORIDAD ALTA: Errores críticos**
+    "no-undef": "off", // Evita el uso de variables no definidas
+    "no-unreachable": "error", // Evita código inalcanzable
+    "react/jsx-no-undef": "error", // Evita el uso de componentes no definidos en JSX
+    "react/jsx-key": "error", // Obliga a usar key en listas de elementos
+    "react/jsx-no-duplicate-props": "error", // Evita props duplicados en JSX
+    "react-hooks/rules-of-hooks": "error", // Asegura el uso correcto de hooks
+    "@next/next/no-html-link-for-pages": "error", // Evita el uso incorrecto de enlaces en Next.js
+    // ❌ "eqeqeq": ["error", "always"], // Obliga a usar === en lugar de ==
+    // ❌ "curly": "error", // Obliga a usar llaves en estructuras de control
+    "no-debugger": "error", // Prohíbe el uso de debugger
+    //"no-alert": "error", // Prohíbe el uso de alert, confirm y prompt
+    // ❌ "prefer-const": "error", // Obliga a usar const en lugar de let si la variable no cambia
+    // ❌ "no-var": "error", // Prohíbe el uso de var
+    // ❌ "no-duplicate-imports": "error", // Evita importar el mismo módulo más de una vez
+    // ❌ "@typescript-eslint/no-unused-vars": "error", // Advierte sobre variables no utilizadas en TypeScript
+    // ❌"no-unused-vars": ["error", { "argsIgnorePattern": "^_" }], // Advierte sobre variables no utilizadas
+    // "no-console": "error", // Advierte sobre el uso de console . log
+
+    // // 📌 PRIORIDAD MEDIA: Advertencias importantes**
+    "no-extra-semi": "warn", // Advierte sobre puntos y coma innecesarios
+    // "react-hooks/exhaustive-deps": "warn", // Advierte sobre dependencias mal configuradas en useEffect
+    // "@typescript-eslint/no-explicit-any": "warn", // Advierte sobre el uso de any en TypeScript
+    // "@typescript-eslint/no-non-null-assertion": "warn", // Advierte sobre el uso de ! en TypeScript
+    // "@typescript-eslint/no-empty-interface": "warn", // Advierte sobre interfaces vacías
+    // "@typescript-eslint/no-empty-function": "warn", // Advierte sobre funciones vacías
+    // "@typescript-eslint/ban-ts-comment": "warn", // Advierte sobre el uso de @ts-ignore
+    // "jsx-a11y/alt-text": "warn", // Advierte sobre imágenes sin atributo alt
+
+    // // 📌 PRIORIDAD BAJA: Reglas de estilo y formato**
+    // "prettier/prettier": "error", // Obliga a usar Prettier para formatear el código
+
+    // // 📌 REGLAS DE REACT
+    "react/react-in-jsx-scope": "off", // Next.js ya importa React automáticamente, no es necesario importarlo en cada archivo.
+    "react/jsx-uses-react": "off", // React 17+ no requiere `React` en el scope para usar JSX.
+    "react/jsx-uses-vars": "off", // Evita advertencias innecesarias sobre variables JSX no utilizadas.
+
+    // // 📌 REGLAS DE TYPESCRIPT
+    // "@typescript-eslint/explicit-function-return-type": "warn", // Advierte si una función no tiene un tipo de retorno explícito.
+    // "@typescript-eslint/consistent-type-definitions": ["error", "interface"], // Obliga a usar `interface` en lugar de `type` para definir objetos.
+    // "@typescript-eslint/explicit-module-boundary-types": "off", // No obliga a definir tipos de retorno en funciones exportadas.
+
+    // // 📌 REGLAS DE IMPORTACIONES
+    // "import/no-unresolved": "error", // Genera error si se importa un módulo inexistente o mal escrito.
+    // "import/no-duplicates": "error", // Evita importar el mismo módulo más de una vez en un archivo.
+
+    // "import/order": [
+    //   "warn",
+    //   {
+    //     "groups": ["builtin", "external", "internal", "parent", "sibling", "index"], // Ordena los imports
+    //     "newlines-between": "always", // Separa los grupos de imports con una línea en blanco
+    //     "alphabetize": { "order": "asc", "caseInsensitive": true } // Ordena los imports alfabéticamente
+    //   }
+    // ],
+    // "jsx-a11y/anchor-is-valid": [
+    //   "warn",
+    //   {
+    //     "aspects": ["invalidHref", "preferButton"] // Advierte sobre el uso incorrecto de <a>
+    //   }
+    // ],
+    "@next/next/no-sync-scripts": "warn" // Advierte sobre el uso de scripts síncronos en Next.js
+  },
+
+  "settings": {
+    "react": {
+      "version": "detect" // Detecta automáticamente la versión de React
+    },
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"] // Especifica las extensiones de archivo para imports
+      }
+    }
+  }
+}
