@@ -8,7 +8,17 @@ const nextConfig = {
   reactStrictMode: false, //Si se tiene en true, se va a llamar dos veces al hook de useEffect
   productionBrowserSourceMaps: false,
    // Optional: Add a trailing slash to all paths `/about` -> `/about/`
-  trailingSlash: true,
+  trailingSlash: false,
+  exportPathMap: async function (
+    defaultPathMap,
+    { dev, dir, outDir, distDir, buildId }
+  ) {
+    return {
+      '/': { page: '/' },
+      '/login': { page: '/login' },
+      '/about': { page: '/about' },
+    }
+  },
    // Optional: Change the output directory `out` -> `dist`
    // distDir: 'dist',
 
