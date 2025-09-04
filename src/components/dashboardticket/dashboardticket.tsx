@@ -21,6 +21,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  InputAdornment,
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddIcon from "@mui/icons-material/Add";
@@ -54,7 +55,12 @@ const DashboardTicket: React.FC = () => {
     handleDelete,
     alert,
     setAlert,
+    handlePriceChange,
+    updateByRoute,
+    handleNameChange,
+    airports
   } = useDashboardTicket();
+
 
   const columns: GridColDef[] = [
     {
@@ -184,59 +190,108 @@ const DashboardTicket: React.FC = () => {
       <Dialog open={openModalCreate} onClose={handleCloseModal} fullWidth>
         <DialogTitle>Crear Nuevo Ticket</DialogTitle>
         <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <TextField
-              label="Nombre del pasajero"
-              value={formData.passengerName}
-              onChange={(e) => setFormData({ ...formData, passengerName: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Número de vuelo"
-              value={formData.flightNumber}
-              onChange={(e) => setFormData({ ...formData, flightNumber: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Origen"
-              value={formData.origin}
-              onChange={(e) => setFormData({ ...formData, origin: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Destino"
-              value={formData.destination}
-              onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Asiento"
-              value={formData.seatNumber}
-              onChange={(e) => setFormData({ ...formData, seatNumber: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Precio"
-              type="number"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-              fullWidth
-            />
-            <FormControl fullWidth>
-              <InputLabel id="status-label">Estado</InputLabel>
-              <Select
-                labelId="status-label"
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value as TicketStatus })
-                }
-              >
-                <MenuItem value="booked">Reservado</MenuItem>
-                <MenuItem value="checked-in">Registrado</MenuItem>
-                <MenuItem value="cancelled">Cancelado</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
+         <Stack spacing={2} mt={1}>
+      {/* Nombre */}
+      <TextField
+        label="Nombre del pasajero"
+        value={formData.passengerName}
+        onChange={(e) => handleNameChange(e.target.value)}
+        fullWidth
+      />
+
+      
+
+      {/* Origen */}
+       <FormControl fullWidth>
+        <InputLabel id="origin-label" sx={{ backgroundColor: "white", px: 0.5 }}>
+          Origen
+        </InputLabel>
+        <Select
+          labelId="origin-label"
+          value={formData.origin}
+          onChange={(e) => updateByRoute(e.target.value, formData.destination)}
+        >
+          {airports.map((airport) => (
+            <MenuItem key={airport.code} value={airport.code}>
+              {airport.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Destino */}
+      <FormControl fullWidth>
+        <InputLabel
+          id="destination-label"
+          sx={{ backgroundColor: "white", px: 0.5 }}
+        >
+          Destino
+        </InputLabel>
+        <Select
+          labelId="destination-label"
+          value={formData.destination}
+          onChange={(e) => updateByRoute(formData.origin, e.target.value)}
+        >
+          {airports
+            .filter((a) => a.code !== formData.origin) // ❌ excluir origen
+            .map((airport) => (
+              <MenuItem key={airport.code} value={airport.code}>
+                {airport.name}
+              </MenuItem>
+            ))}
+        </Select>
+      </FormControl>
+
+      {/* Número de vuelo */}
+      <TextField
+        label="Número de vuelo"
+        value={formData.flightNumber}
+        fullWidth
+        InputProps={{ readOnly: true }}
+        disabled
+      />
+
+      {/* Asiento */}
+      <FormControl fullWidth>
+        <InputLabel id="seat-label" sx={{ backgroundColor: "white", px: 0.5 }}>
+          Asiento
+        </InputLabel>
+        <Select
+          labelId="seat-label"
+          value={formData.seatNumber}
+          onChange={(e) =>
+            setFormData({ ...formData, seatNumber: e.target.value })
+          }
+        >
+          {["12A","12B","12C","12D","12E","12F",
+            "14A","14B","14C","14D","14E","14F",
+            "22A","22B","22C","22D","22E","22F",
+            "30A","30B","30C","30D","30E","30F"].map(seat => (
+              <MenuItem key={seat} value={seat}>{seat}</MenuItem>
+            ))}
+        </Select>
+      </FormControl>
+
+      {/* Precio */}
+      <TextField
+        label="Precio"
+        type="number"
+        value={formData.price}
+        onChange={(e) => handlePriceChange(e.target.value)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start">USD</InputAdornment>,
+        }}
+        fullWidth
+      />
+
+      {/* Estado */}
+      <TextField
+          label="Estado"
+          value="RESERVADO"
+          fullWidth
+          disabled
+        />
+    </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseModal} disabled={creating}>

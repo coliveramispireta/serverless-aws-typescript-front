@@ -199,6 +199,71 @@ export default function useDashboardTicket() {
     }
   };
 
+const airports = [
+  { code: "LIM", name: "Lima" },
+  { code: "MIA", name: "Miami" },
+  { code: "MAD", name: "Madrid" },
+  { code: "JFK", name: "New York" },
+  { code: "CDG", name: "París" },
+  { code: "SCL", name: "Santiago" },
+  { code: "GRU", name: "São Paulo" },
+];
+
+const generateRoutes = () => {
+  const map: Record<string, { flightNumber: string; price: number }> = {};
+  let counter = 100; // para ir numerando vuelos
+
+  for (let i = 0; i < airports.length; i++) {
+    for (let j = 0; j < airports.length; j++) {
+      if (i !== j) {
+        const origin = airports[i].code;
+        const destination = airports[j].code;
+
+        map[`${origin}-${destination}`] = {
+          flightNumber: `FL${counter}`, // ejemplo: FL100, FL101...
+          price: 200 + Math.floor(Math.random() * 1000), // precio random entre 200 y 1200
+        };
+
+        counter++;
+      }
+    }
+  }
+  return map;
+};
+
+const routeMap = generateRoutes();
+
+  // Manejo nombre: solo letras y mayúsculas
+  const handleNameChange = (value: string) => {
+    const onlyLetters = value.replace(/[^A-Za-z\s]/g, "");
+    setFormData({ ...formData, passengerName: onlyLetters.toUpperCase() });
+  };
+
+  // Manejo precio con decimales y prefijo
+  const handlePriceChange = (value: string) => {
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      setFormData({ ...formData, price: num.toFixed(2) });
+    } else {
+      setFormData({ ...formData, price: "" });
+    }
+  };
+
+ const updateByRoute = (origin: string, destination: string) => {
+    const route = `${origin}-${destination}`;
+    if (routeMap[route]) {
+      setFormData({
+        ...formData,
+        origin,
+        destination,
+        flightNumber: routeMap[route].flightNumber,
+        price: routeMap[route].price.toFixed(2),
+      });
+    } else {
+      setFormData({ ...formData, origin, destination, flightNumber: "", price: "" });
+    }
+  };
+
   const state = {
     handleOpenCreate,
     handleOpenCheckIn,
@@ -224,6 +289,10 @@ export default function useDashboardTicket() {
     handleDelete,
     alert,
     setAlert,
+    handlePriceChange,
+    updateByRoute,
+    handleNameChange,
+    airports
   };
 
   return state;
