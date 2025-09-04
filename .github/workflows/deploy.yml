@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
+      NEXT_PUBLIC_API_URL_LAMBDA_LOCAL: ${{ secrets.API_URL_LAMBDA_LOCAL }}
+      NEXT_PUBLIC_API_URL_LAMBDA_DEV: ${{ secrets.API_URL_LAMBDA_DEV }}
+      NEXT_PUBLIC_API_URL_LAMBDA_PROD: ${{ secrets.API_URL_LAMBDA_PROD }}
+      NEXT_PUBLIC_AUTH_TOKEN_LOCAL: ${{ secrets.AUTH_TOKEN_LOCAL }}
+      NEXT_PUBLIC_AUTH_TOKEN_DEV: ${{ secrets.AUTH_TOKEN_DEV }}
+      NEXT_PUBLIC_AUTH_TOKEN_PROD: ${{ secrets.AUTH_TOKEN_PROD }}
     steps:
       - uses: actions/checkout@v4
 
