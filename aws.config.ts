@@ -1,3 +1,4 @@
+import { REDIRECT_SIGNIN, REDIRECT_SIGNUP } from "@/app/global";
 
 
 export const awsConfig = {
@@ -8,8 +9,8 @@ export const awsConfig = {
   oauth: {
     domain: "us-east-1zxbsmylh5.auth.us-east-1.amazoncognito.com", 
     scope: ["openid", "email", "profile"],
-    redirectSignIn: "http://localhost:3000/dashboard",
-    redirectSignOut: "http://localhost:3000/login",
+    redirectSignIn: REDIRECT_SIGNIN,
+    redirectSignOut: REDIRECT_SIGNUP,
     responseType: "token",
   },
   aws_cognito_username_attributes: ["EMAIL"], 
