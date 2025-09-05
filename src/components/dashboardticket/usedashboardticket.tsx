@@ -199,39 +199,39 @@ export default function useDashboardTicket() {
     }
   };
 
-const airports = [
-  { code: "LIM", name: "Lima" },
-  { code: "MIA", name: "Miami" },
-  { code: "MAD", name: "Madrid" },
-  { code: "JFK", name: "New York" },
-  { code: "CDG", name: "París" },
-  { code: "SCL", name: "Santiago" },
-  { code: "GRU", name: "São Paulo" },
-];
+  const airports = [
+    { code: "LIM", name: "Lima" },
+    { code: "MIA", name: "Miami" },
+    { code: "MAD", name: "Madrid" },
+    { code: "JFK", name: "New York" },
+    { code: "CDG", name: "París" },
+    { code: "SCL", name: "Santiago" },
+    { code: "GRU", name: "São Paulo" },
+  ];
 
-const generateRoutes = () => {
-  const map: Record<string, { flightNumber: string; price: number }> = {};
-  let counter = 100; // para ir numerando vuelos
+  const generateRoutes = () => {
+    const map: Record<string, { flightNumber: string; price: number }> = {};
+    let counter = 100; // para ir numerando vuelos
 
-  for (let i = 0; i < airports.length; i++) {
-    for (let j = 0; j < airports.length; j++) {
-      if (i !== j) {
-        const origin = airports[i].code;
-        const destination = airports[j].code;
+    for (let i = 0; i < airports.length; i++) {
+      for (let j = 0; j < airports.length; j++) {
+        if (i !== j) {
+          const origin = airports[i].code;
+          const destination = airports[j].code;
 
-        map[`${origin}-${destination}`] = {
-          flightNumber: `FL${counter}`, // ejemplo: FL100, FL101...
-          price: 200 + Math.floor(Math.random() * 1000), // precio random entre 200 y 1200
-        };
+          map[`${origin}-${destination}`] = {
+            flightNumber: `FL${counter}`, // ejemplo: FL100, FL101...
+            price: 200 + Math.floor(Math.random() * 1000), // precio random entre 200 y 1200
+          };
 
-        counter++;
+          counter++;
+        }
       }
     }
-  }
-  return map;
-};
+    return map;
+  };
 
-const routeMap = generateRoutes();
+  const routeMap = generateRoutes();
 
   // Manejo nombre: solo letras y mayúsculas
   const handleNameChange = (value: string) => {
@@ -249,7 +249,7 @@ const routeMap = generateRoutes();
     }
   };
 
- const updateByRoute = (origin: string, destination: string) => {
+  const updateByRoute = (origin: string, destination: string) => {
     const route = `${origin}-${destination}`;
     if (routeMap[route]) {
       setFormData({
@@ -292,7 +292,7 @@ const routeMap = generateRoutes();
     handlePriceChange,
     updateByRoute,
     handleNameChange,
-    airports
+    airports,
   };
 
   return state;
