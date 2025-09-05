@@ -1,34 +1,37 @@
-
 # Frontend - CRUD Guru Challenge
 
 ## Descripción
-Frontend desarrollado en **Next.js**, **TypeScript** y **Material UI (MUI)**.    
+
+Frontend desarrollado en **Next.js**, **TypeScript** y **Material UI (MUI)**.
 
 Este frontend **consume las Lambdas desplegadas en AWS** (expuestas mediante API Gateway y conectadas a DynamoDB).  
-La **autenticación se maneja con Amazon Cognito**, integrada con el proyecto a través de **AWS Amplify**.  
-- Implementa autenticación, dashboard con CRUD de tickets, perfil de usuario y sección de preguntas frecuentes.  
+La **autenticación se maneja con Amazon Cognito**, integrada con el proyecto a través de **AWS Amplify**.
+
+- Implementa autenticación, dashboard con CRUD de tickets, perfil de usuario y sección de preguntas frecuentes.
 - Consume Lambdas de desarrollo / produccion segun variable --stage.
 - Soporta **multi-stage deployments** (`dev` y `prod`) vía **GitHub Actions**.
 
 ### Autenticación
-- Es necesario **crear previamente un cliente en Cognito** para poder autenticar usuarios.  
-- Existe una **Lambda PreSignUp** que confirma automáticamente cada usuario al momento de registrarse.  
-- Se implementó **inicio de sesión con Google** usando el flujo **implícito** de OAuth2, redirigiendo al usuario con valores encriptados en el hash de la URL.  
 
+- Es necesario **crear previamente un cliente en Cognito** para poder autenticar usuarios.
+- Existe una **Lambda PreSignUp** que confirma automáticamente cada usuario al momento de registrarse.
+- Se implementó **inicio de sesión con Google** usando el flujo **implícito** de OAuth2, redirigiendo al usuario con valores encriptados en el hash de la URL.
 
 ## Arquitectura
-- **Framework**: Next.js + TypeScript  
-- **UI Library**: Material UI (MUI)  
+
+- **Framework**: Next.js + TypeScript
+- **UI Library**: Material UI (MUI)
 - **Secciones principales**:
   - Landing Page
   - Login (Cognito + Google OAuth)
   - Dashboard (tabla + CRUD de tickets)
   - Mi Perfil
-  - Preguntas frecuentes (FAQ)  
+  - Preguntas frecuentes (FAQ)
+
 ---
 
 El build está configurado para exportar los archivos estáticos a la carpeta `out/`, que se sube automáticamente a un bucket **S3** configurado como hosting estático.  
-El contenido es distribuido globalmente con **CloudFront**, apuntando a un dominio.  
+El contenido es distribuido globalmente con **CloudFront**, apuntando a un dominio.
 
 ---
 
@@ -120,7 +123,9 @@ npm run ts-lint
 ```
 
 ## GitHub Actions - Secrets
+
 Para que el pipeline de despliegue funcione correctamente, es necesario configurar los siguientes secrets en tu repositorio de GitHub:
+
 ```bash
 # API URLs
 API_URL_LAMBDA_LOCAL
@@ -162,8 +167,8 @@ npm run deploy:dev
 npm run deploy:prod
 ```
 
-
 ---
+
 ---
 
 ## Husky y Lint-Staged
@@ -180,12 +185,14 @@ Si los tests fallan o hay errores de lint/format, el commit no se ejecuta.
 De esta forma se asegura que no entren commits con errores de formato o tests fallidos al repositorio.
 
 ## CI/CD (GitHub Actions)
+
 La integración continua y despliegue automático se realiza mediante **GitHub Actions**.
 
 - Cada push a la rama development genera un build en modo dev y despliega al bucket S3 (stage dev).
 - Cada push a la rama master genera un build en modo prod y despliega al bucket S3 (stage prod).
 
 ## Flujo de Workflow
+
 - Archivo: `.github/workflows/deploy.yml`
 - next build && next export → genera carpeta out/.
 - aws s3 sync ./out s3://<bucket-name> --delete → sube los archivos a S3.
@@ -221,5 +228,3 @@ GitHub Actions → pipeline automático con ramas development (dev) y master (pr
 <img src="./public/img/screenshots/workflow-jobs-dev.png" alt="Jobs development" width="600">
 
 ---
-
-
