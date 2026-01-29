@@ -118,8 +118,7 @@ export default function NavbarBets() {
             >
               Hola {userInfo.userName.split(" ")[0]}!
             </Typography>
-          ) : !pathname.includes("dashboard") && !isMobile ? null : //     sx={{ //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //     fullWidth //   <Button // <Link href="/dashboard" style={{ textDecoration: "none" }}>
-          //       borderRadius: 50,
+          ) : !pathname.includes("dashboard") && !isMobile ? null : //       borderRadius: 50, //     sx={{ //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //     fullWidth //   <Button // <Link href="/dashboard" style={{ textDecoration: "none" }}>
           //       textTransform: "none",
           //       fontWeight: 500,
           //       fontSize: 16,
@@ -131,8 +130,7 @@ export default function NavbarBets() {
           //     Accede&nbsp;al&nbsp;dashboard
           //   </Button>
           // </Link>
-          !pathname.includes("dashboard") && isMobile ? null : //       width: "90%", //     sx={{ //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //   <Button // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
-          //       position: "fixed",
+          !pathname.includes("dashboard") && isMobile ? null : //       position: "fixed", //       width: "90%", //     sx={{ //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //   <Button // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
           //       top: 68,
           //       left: "5%",
           //       zIndex: 1300,
