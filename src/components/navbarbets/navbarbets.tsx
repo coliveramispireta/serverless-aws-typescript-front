@@ -118,9 +118,7 @@ export default function NavbarBets() {
             >
               Hola {userInfo.userName.split(" ")[0]}!
             </Typography>
-          ) : !pathname.includes("dashboard") &&
-            !isMobile ? null : // <Link href="/dashboard" style={{ textDecoration: "none" }}>
-          //   <Button
+          ) : !pathname.includes("dashboard") && !isMobile ? null : //   <Button // <Link href="/dashboard" style={{ textDecoration: "none" }}>
           //     fullWidth
           //     variant="contained"
           //     color="secondary"
@@ -139,9 +137,7 @@ export default function NavbarBets() {
           //     Accede&nbsp;al&nbsp;dashboard
           //   </Button>
           // </Link>
-          !pathname.includes("dashboard") &&
-            isMobile ? null : // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
-          //   <Button
+          !pathname.includes("dashboard") && isMobile ? null : //   <Button // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
           //     variant="contained"
           //     color="secondary"
           //     size="small"
