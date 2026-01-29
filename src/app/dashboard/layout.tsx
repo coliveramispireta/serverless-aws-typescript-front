@@ -134,9 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <WithGuards authGuards={sysAuthGuard}>
-        {children}
-        </WithGuards>
+      <WithGuards authGuards={sysAuthGuard}>{children}</WithGuards>
 
       {/* <TimeoutSessionDialog
         type={TimeoutSessionDialogTypes.Warning}

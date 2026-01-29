@@ -118,55 +118,53 @@ export default function NavbarBets() {
             >
               Hola {userInfo.userName.split(" ")[0]}!
             </Typography>
-          ) : !pathname.includes("dashboard") && !isMobile ? (
-            null
-            // <Link href="/dashboard" style={{ textDecoration: "none" }}>
-            //   <Button
-            //     fullWidth
-            //     variant="contained"
-            //     color="secondary"
-            //     size="small"
-            //     className={vibrate ? "vibrate" : ""}
-            //     sx={{
-            //       borderRadius: 50,
-            //       textTransform: "none",
-            //       fontWeight: 500,
-            //       fontSize: 16,
-            //       px: 3,
-            //       py: 1.05,
-            //       my: 1,
-            //     }}
-            //   >
-            //     Accede&nbsp;al&nbsp;dashboard
-            //   </Button>
-            // </Link>
-          ) : !pathname.includes("dashboard") && isMobile ? (
-            null
-            // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
-            //   <Button
-            //     variant="contained"
-            //     color="secondary"
-            //     size="small"
-            //     className={vibrate ? "vibrate" : ""}
-            //     sx={{
-            //       width: "90%",
-            //       position: "fixed",
-            //       top: 68,
-            //       left: "5%",
-            //       zIndex: 1300,
-            //       borderRadius: 50,
-            //       textTransform: "none",
-            //       fontWeight: 500,
-            //       fontSize: 16,
-            //       px: 4,
-            //       py: 1.2,
-            //       boxShadow: 3,
-            //     }}
-            //   >
-            //     Accede&nbsp;al&nbsp;dashboard
-            //   </Button>
-            // </Link>
-          ) : null}
+          ) : !pathname.includes("dashboard") &&
+            !isMobile ? null : // <Link href="/dashboard" style={{ textDecoration: "none" }}>
+          //   <Button
+          //     fullWidth
+          //     variant="contained"
+          //     color="secondary"
+          //     size="small"
+          //     className={vibrate ? "vibrate" : ""}
+          //     sx={{
+          //       borderRadius: 50,
+          //       textTransform: "none",
+          //       fontWeight: 500,
+          //       fontSize: 16,
+          //       px: 3,
+          //       py: 1.05,
+          //       my: 1,
+          //     }}
+          //   >
+          //     Accede&nbsp;al&nbsp;dashboard
+          //   </Button>
+          // </Link>
+          !pathname.includes("dashboard") &&
+            isMobile ? null : // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
+          //   <Button
+          //     variant="contained"
+          //     color="secondary"
+          //     size="small"
+          //     className={vibrate ? "vibrate" : ""}
+          //     sx={{
+          //       width: "90%",
+          //       position: "fixed",
+          //       top: 68,
+          //       left: "5%",
+          //       zIndex: 1300,
+          //       borderRadius: 50,
+          //       textTransform: "none",
+          //       fontWeight: 500,
+          //       fontSize: 16,
+          //       px: 4,
+          //       py: 1.2,
+          //       boxShadow: 3,
+          //     }}
+          //   >
+          //     Accede&nbsp;al&nbsp;dashboard
+          //   </Button>
+          // </Link>
+          null}
 
           {!userInfo.isLogged ? (
             <Link href="/loginbets" style={{ textDecoration: "none" }}>

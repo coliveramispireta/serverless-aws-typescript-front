@@ -68,19 +68,18 @@ export const Fitness = () => {
   const [montoApuesta, setMontoApuesta] = useState("");
   const [participantes, setParticipantes] = useState<ParticipanteUI[]>([]);
 
-
-useEffect(() => {
-  listMembers().then((data) => {
-    const normalized = data.map((p: any) => ({
-      ...p,
-      nombre: p.nombreCompleto,
-      pesoInicial: p.pesoActual, // inicial = actual al inicio
-      avatar: "/img/avatar/avatar_men.jpg",
-      progreso: "/progreso1.png",
-    }));
-    setParticipantes(normalized);
-  });
-}, []);
+  useEffect(() => {
+    listMembers().then((data) => {
+      const normalized = data.map((p: any) => ({
+        ...p,
+        nombre: p.nombreCompleto,
+        pesoInicial: p.pesoActual, // inicial = actual al inicio
+        avatar: "/img/avatar/avatar_men.jpg",
+        progreso: "/progreso1.png",
+      }));
+      setParticipantes(normalized);
+    });
+  }, []);
 
   // Estados del formulario de inscripción
   const [formData, setFormData] = useState({
@@ -153,18 +152,18 @@ useEffect(() => {
   };
 
   const handleInscripcion = async () => {
-  try {
-    const body = {
-      ...formData,
-      pesoInicial: formData.pesoActual,
+    try {
+      const body = {
+        ...formData,
+        pesoInicial: formData.pesoActual,
+      };
+      await createMember(formData);
+      alert("¡Inscripción exitosa! Bienvenido al reto WFC");
+    } catch (error) {
+      console.error("Error en inscripción:", error);
+      alert("Error al registrar la inscripción");
     }
-    await createMember(formData);
-    alert("¡Inscripción exitosa! Bienvenido al reto WFC");
-  } catch (error) {
-    console.error("Error en inscripción:", error);
-    alert("Error al registrar la inscripción");
-  }
-};
+  };
 
   // const participantes = [
   //   {
@@ -202,17 +201,19 @@ useEffect(() => {
   // ];
 
   // Calcular porcentaje de progreso basado en peso ideal
-  const participantesConProgreso = participantes.map((p) => {
-    const pesoAPerder = Math.max(p.pesoInicial - p.pesoIdeal, 1);
-    const pesoPerdido = p.pesoInicial - p.pesoActual;
-    const porcentajeProgreso = ((pesoPerdido / pesoAPerder) * 100).toFixed(2);
-    return {
-      ...p,
-      porcentajeProgreso: parseFloat(porcentajeProgreso),
-      pesoPerdido,
-      pesoAPerder,
-    };
-  }).sort((a, b) => b.porcentajeProgreso - a.porcentajeProgreso);
+  const participantesConProgreso = participantes
+    .map((p) => {
+      const pesoAPerder = Math.max(p.pesoInicial - p.pesoIdeal, 1);
+      const pesoPerdido = p.pesoInicial - p.pesoActual;
+      const porcentajeProgreso = ((pesoPerdido / pesoAPerder) * 100).toFixed(2);
+      return {
+        ...p,
+        porcentajeProgreso: parseFloat(porcentajeProgreso),
+        pesoPerdido,
+        pesoAPerder,
+      };
+    })
+    .sort((a, b) => b.porcentajeProgreso - a.porcentajeProgreso);
 
   // Fondos de apuestas por participante y tipo
   const fondosApuestas = {
@@ -240,10 +241,7 @@ useEffect(() => {
   const pozoPremioInscripciones = participantes.length * costoPorInscripcion;
 
   const fondoActual = fondosApuestas[tipoApuesta as keyof typeof fondosApuestas];
-  const totalFondoApuestas = Object.values(fondoActual).reduce(
-    (sum, val) => sum + val,
-    0
-  );
+  const totalFondoApuestas = Object.values(fondoActual).reduce((sum, val) => sum + val, 0);
 
   const handleRealizarApuesta = () => {
     if (!participanteSeleccionado || !montoApuesta) {
@@ -347,11 +345,7 @@ useEffect(() => {
           >
             <Tab icon={<Person />} iconPosition="start" label="Inscripción" />
             <Tab icon={<EmojiEvents />} iconPosition="start" label="Ranking" />
-            <Tab
-              icon={<AttachMoney />}
-              iconPosition="start"
-              label="Apuestas"
-            />
+            <Tab icon={<AttachMoney />} iconPosition="start" label="Apuestas" />
           </Tabs>
         </Paper>
 
@@ -397,9 +391,7 @@ useEffect(() => {
                       variant="outlined"
                       fullWidth
                       value={formData.nombreCompleto}
-                      onChange={(e) =>
-                        handleInputChange("nombreCompleto", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("nombreCompleto", e.target.value)}
                       sx={textFieldStyles}
                     />
 
@@ -411,9 +403,7 @@ useEffect(() => {
                           variant="outlined"
                           fullWidth
                           value={formData.edad}
-                          onChange={(e) =>
-                            handleInputChange("edad", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange("edad", e.target.value)}
                           InputProps={{
                             endAdornment: (
                               <InputAdornment position="end">
@@ -429,9 +419,7 @@ useEffect(() => {
                           <InputLabel sx={{ color: "#aaa" }}>Sexo</InputLabel>
                           <Select
                             value={formData.sexo}
-                            onChange={(e) =>
-                              handleInputChange("sexo", e.target.value)
-                            }
+                            onChange={(e) => handleInputChange("sexo", e.target.value)}
                             label="Sexo"
                             sx={{ color: "white" }}
                           >
@@ -450,9 +438,7 @@ useEffect(() => {
                           variant="outlined"
                           fullWidth
                           value={formData.pesoActual}
-                          onChange={(e) =>
-                            handleInputChange("pesoActual", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange("pesoActual", e.target.value)}
                           InputProps={{
                             endAdornment: (
                               <InputAdornment position="end">
@@ -470,9 +456,7 @@ useEffect(() => {
                           variant="outlined"
                           fullWidth
                           value={formData.talla}
-                          onChange={(e) =>
-                            handleInputChange("talla", e.target.value)
-                          }
+                          onChange={(e) => handleInputChange("talla", e.target.value)}
                           InputProps={{
                             endAdornment: (
                               <InputAdornment position="end">
@@ -491,9 +475,7 @@ useEffect(() => {
                       variant="outlined"
                       fullWidth
                       value={formData.anchoMuneca}
-                      onChange={(e) =>
-                        handleInputChange("anchoMuneca", e.target.value)
-                      }
+                      onChange={(e) => handleInputChange("anchoMuneca", e.target.value)}
                       InputProps={{
                         endAdornment: (
                           <InputAdornment position="end">
@@ -518,9 +500,7 @@ useEffect(() => {
                         }}
                       >
                         Estructura ósea detectada:{" "}
-                        <strong style={{ textTransform: "capitalize" }}>
-                          {estructuraOsea}
-                        </strong>
+                        <strong style={{ textTransform: "capitalize" }}>{estructuraOsea}</strong>
                       </Alert>
                     )}
                   </Box>
@@ -612,19 +592,9 @@ useEffect(() => {
                         <Typography variant="body2" color="#aaa" mb={1}>
                           Tu peso ideal es
                         </Typography>
-                        <Typography
-                          variant="h2"
-                          fontWeight="900"
-                          color="#ffd700"
-                          mb={1}
-                        >
+                        <Typography variant="h2" fontWeight="900" color="#ffd700" mb={1}>
                           {formData.pesoIdeal}
-                          <Typography
-                            component="span"
-                            variant="h5"
-                            color="#aaa"
-                            ml={1}
-                          >
+                          <Typography component="span" variant="h5" color="#aaa" ml={1}>
                             kg
                           </Typography>
                         </Typography>
@@ -633,8 +603,7 @@ useEffect(() => {
                             Peso a perder:{" "}
                             <strong style={{ color: "#ff6b35" }}>
                               {(
-                                parseFloat(formData.pesoActual) -
-                                parseFloat(formData.pesoIdeal)
+                                parseFloat(formData.pesoActual) - parseFloat(formData.pesoIdeal)
                               ).toFixed(1)}{" "}
                               kg
                             </strong>
@@ -646,24 +615,13 @@ useEffect(() => {
                     <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
 
                     <Box>
-                      <Typography
-                        variant="subtitle2"
-                        color="#ffd700"
-                        mb={2}
-                        fontWeight="700"
-                      >
+                      <Typography variant="subtitle2" color="#ffd700" mb={2} fontWeight="700">
                         📊 Información del cálculo
                       </Typography>
                       <Box component="ul" sx={{ color: "#aaa", pl: 2, m: 0 }}>
-                        <li style={{ marginBottom: "8px" }}>
-                          Fórmula científica validada
-                        </li>
-                        <li style={{ marginBottom: "8px" }}>
-                          Ajustado por estructura ósea
-                        </li>
-                        <li style={{ marginBottom: "8px" }}>
-                          Personalizado según tu sexo
-                        </li>
+                        <li style={{ marginBottom: "8px" }}>Fórmula científica validada</li>
+                        <li style={{ marginBottom: "8px" }}>Ajustado por estructura ósea</li>
+                        <li style={{ marginBottom: "8px" }}>Personalizado según tu sexo</li>
                       </Box>
                     </Box>
 
@@ -680,9 +638,7 @@ useEffect(() => {
                         fontWeight: "bold",
                         py: 1.5,
                         fontSize: "1.1rem",
-                        boxShadow: pesoIdealCalculado
-                          ? "0 4px 20px rgba(23,103,252,0.3)"
-                          : "none",
+                        boxShadow: pesoIdealCalculado ? "0 4px 20px rgba(23,103,252,0.3)" : "none",
                         "&:hover": {
                           background: pesoIdealCalculado
                             ? "linear-gradient(45deg, #2b7aff 30%, #8fc0a9 90%)"
@@ -764,27 +720,15 @@ useEffect(() => {
                       bgcolor: "rgba(255,215,0,0.1)",
                     }}
                   >
-                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
-                      #
-                    </TableCell>
-                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
-                      Participante
-                    </TableCell>
-                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
-                      Peso inicial
-                    </TableCell>
-                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
-                      Peso actual
-                    </TableCell>
-                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
-                      Peso ideal
-                    </TableCell>
+                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>#</TableCell>
+                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>Participante</TableCell>
+                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>Peso inicial</TableCell>
+                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>Peso actual</TableCell>
+                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>Peso ideal</TableCell>
                     <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
                       Progreso al ideal
                     </TableCell>
-                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>
-                      Galería
-                    </TableCell>
+                    <TableCell sx={{ color: "#ffd700", fontWeight: 700 }}>Galería</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -799,15 +743,9 @@ useEffect(() => {
                       }}
                     >
                       <TableCell>
-                        {i === 0 && (
-                          <EmojiEvents sx={{ color: "#ffd700", fontSize: 28 }} />
-                        )}
-                        {i === 1 && (
-                          <EmojiEvents sx={{ color: "#c0c0c0", fontSize: 28 }} />
-                        )}
-                        {i === 2 && (
-                          <EmojiEvents sx={{ color: "#cd7f32", fontSize: 28 }} />
-                        )}
+                        {i === 0 && <EmojiEvents sx={{ color: "#ffd700", fontSize: 28 }} />}
+                        {i === 1 && <EmojiEvents sx={{ color: "#c0c0c0", fontSize: 28 }} />}
+                        {i === 2 && <EmojiEvents sx={{ color: "#cd7f32", fontSize: 28 }} />}
                         {i > 2 && (
                           <Typography color="#aaa" fontWeight="bold">
                             {i + 1}
@@ -824,11 +762,7 @@ useEffect(() => {
                               border: i === 0 ? "3px solid #ffd700" : "none",
                             }}
                           />
-                          <Typography
-                            fontWeight="700"
-                            fontSize="1.1rem"
-                            color="#fff"
-                          >
+                          <Typography fontWeight="700" fontSize="1.1rem" color="#fff">
                             {p.nombre}
                           </Typography>
                         </Box>
@@ -858,10 +792,7 @@ useEffect(() => {
                             icon={<TrendingDown />}
                             label={`${p.porcentajeProgreso}%`}
                             sx={{
-                              bgcolor:
-                                i === 0
-                                  ? "rgba(127,255,0,0.2)"
-                                  : "rgba(255,215,0,0.2)",
+                              bgcolor: i === 0 ? "rgba(127,255,0,0.2)" : "rgba(255,215,0,0.2)",
                               color: i === 0 ? "#7fff00" : "#ffd700",
                               fontWeight: "bold",
                               border: `1px solid ${i === 0 ? "#7fff00" : "#ffd700"}`,
@@ -924,12 +855,7 @@ useEffect(() => {
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
-                  <Typography
-                    variant="h6"
-                    fontWeight="700"
-                    mb={2}
-                    sx={{ color: "#ffd700" }}
-                  >
+                  <Typography variant="h6" fontWeight="700" mb={2} sx={{ color: "#ffd700" }}>
                     🎯 Selecciona el tipo de apuesta
                   </Typography>
                   <ToggleButtonGroup
@@ -986,9 +912,7 @@ useEffect(() => {
                   <AttachMoney sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
                   <Typography variant="h6" color="#aaa" mb={1}>
                     Fondo acumulado - Apuesta{" "}
-                    <span style={{ textTransform: "capitalize" }}>
-                      {tipoApuesta}
-                    </span>
+                    <span style={{ textTransform: "capitalize" }}>{tipoApuesta}</span>
                   </Typography>
                   <Typography variant="h2" fontWeight="900" color="#4caf50">
                     S/. {totalFondoApuestas.toLocaleString()}
@@ -1013,27 +937,17 @@ useEffect(() => {
                 }}
               >
                 <CardContent sx={{ p: 4 }}>
-                  <Typography
-                    variant="h5"
-                    fontWeight="700"
-                    mb={1}
-                    sx={{ color: "#ffd700" }}
-                  >
+                  <Typography variant="h5" fontWeight="700" mb={1} sx={{ color: "#ffd700" }}>
                     Realizar apuesta
                   </Typography>
                   <Typography variant="body2" color="#aaa" mb={4}>
-                    Apuesta{" "}
-                    <span style={{ textTransform: "capitalize" }}>
-                      {tipoApuesta}
-                    </span>{" "}
-                    por el ganador
+                    Apuesta <span style={{ textTransform: "capitalize" }}>{tipoApuesta}</span> por
+                    el ganador
                   </Typography>
 
                   <Box display="flex" flexDirection="column" gap={3}>
                     <FormControl fullWidth sx={textFieldStyles}>
-                      <InputLabel sx={{ color: "#aaa" }}>
-                        Selecciona un participante
-                      </InputLabel>
+                      <InputLabel sx={{ color: "#aaa" }}>Selecciona un participante</InputLabel>
                       <Select
                         value={participanteSeleccionado}
                         onChange={(e) => setParticipanteSeleccionado(e.target.value)}
@@ -1074,9 +988,8 @@ useEffect(() => {
                           border: "1px solid rgba(33,150,243,0.3)",
                         }}
                       >
-                        Tu apuesta irá al fondo de{" "}
-                        <strong>{participanteSeleccionado}</strong>. Si gana, el
-                        fondo se reparte proporcionalmente entre los apostadores.
+                        Tu apuesta irá al fondo de <strong>{participanteSeleccionado}</strong>. Si
+                        gana, el fondo se reparte proporcionalmente entre los apostadores.
                       </Alert>
                     )}
 
@@ -1130,34 +1043,20 @@ useEffect(() => {
                 }}
               >
                 <CardContent sx={{ p: 4 }}>
-                  <Typography
-                    variant="h5"
-                    fontWeight="700"
-                    mb={3}
-                    sx={{ color: "#ffd700" }}
-                  >
+                  <Typography variant="h5" fontWeight="700" mb={3} sx={{ color: "#ffd700" }}>
                     Fondos individuales
                   </Typography>
 
                   <Box display="flex" flexDirection="column" gap={2}>
                     {participantes.map((p, i) => {
-                      const fondoParticipante =
-                        fondoActual[p.nombre as keyof typeof fondoActual];
-                      const porcentajeFondo =
-                        (fondoParticipante / totalFondoApuestas) * 100;
+                      const fondoParticipante = fondoActual[p.nombre as keyof typeof fondoActual];
+                      const porcentajeFondo = (fondoParticipante / totalFondoApuestas) * 100;
 
                       return (
                         <Box key={i}>
-                          <Box
-                            display="flex"
-                            justifyContent="space-between"
-                            mb={1}
-                          >
+                          <Box display="flex" justifyContent="space-between" mb={1}>
                             <Box display="flex" alignItems="center" gap={1}>
-                              <Avatar
-                                src={p.avatar}
-                                sx={{ width: 32, height: 32 }}
-                              />
+                              <Avatar src={p.avatar} sx={{ width: 32, height: 32 }} />
                               <Typography fontWeight="600" color="#fff">
                                 {p.nombre}
                               </Typography>
@@ -1175,8 +1074,7 @@ useEffect(() => {
                               borderRadius: 4,
                               bgcolor: "rgba(255,255,255,0.1)",
                               "& .MuiLinearProgress-bar": {
-                                background:
-                                  "linear-gradient(90deg, #4caf50, #81c784)",
+                                background: "linear-gradient(90deg, #4caf50, #81c784)",
                                 borderRadius: 4,
                               },
                             }}
@@ -1201,46 +1099,29 @@ useEffect(() => {
                 }}
               >
                 <CardContent sx={{ p: 4 }}>
-                  <Typography
-                    variant="h6"
-                    fontWeight="700"
-                    mb={2}
-                    sx={{ color: "#ffd700" }}
-                  >
+                  <Typography variant="h6" fontWeight="700" mb={2} sx={{ color: "#ffd700" }}>
                     📋 Reglas del sistema de apuestas
                   </Typography>
                   <Box component="ul" sx={{ color: "#aaa", pl: 2 }}>
+                    <li>Cada participante tiene su propio fondo de apuestas independiente</li>
                     <li>
-                      Cada participante tiene su propio fondo de apuestas
-                      independiente
+                      <strong>Apuesta Semanal:</strong> Se declara ganador cada semana
                     </li>
                     <li>
-                      <strong>Apuesta Semanal:</strong> Se declara ganador cada
-                      semana
+                      <strong>Apuesta Mensual:</strong> Se declara ganador cada mes
                     </li>
                     <li>
-                      <strong>Apuesta Mensual:</strong> Se declara ganador cada
-                      mes
+                      <strong>Apuesta Final:</strong> Se declara ganador al finalizar el reto
                     </li>
+                    <li>El ganador se determina por el mayor % de progreso hacia su peso ideal</li>
                     <li>
-                      <strong>Apuesta Final:</strong> Se declara ganador al
-                      finalizar el reto
+                      Si un participante gana, su fondo se distribuye proporcionalmente entre
+                      quienes apostaron por él
                     </li>
+                    <li>Puedes apostar a múltiples participantes en diferentes tipos de apuesta</li>
                     <li>
-                      El ganador se determina por el mayor % de progreso hacia su
-                      peso ideal
-                    </li>
-                    <li>
-                      Si un participante gana, su fondo se distribuye
-                      proporcionalmente entre quienes apostaron por él
-                    </li>
-                    <li>
-                      Puedes apostar a múltiples participantes en diferentes tipos
-                      de apuesta
-                    </li>
-                    <li>
-                      Ejemplo: Si el fondo de Carlos es S/. 100 y tú apostaste S/.
-                      20 (20%), recibirás S/. 100 si gana
+                      Ejemplo: Si el fondo de Carlos es S/. 100 y tú apostaste S/. 20 (20%),
+                      recibirás S/. 100 si gana
                     </li>
                   </Box>
                 </CardContent>

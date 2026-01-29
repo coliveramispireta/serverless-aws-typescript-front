@@ -17,7 +17,7 @@ const Page = () => {
         <Navbar />
         <main className="main">
           {/* <DashboardTicket /> */}
-          <Fitness   />
+          <Fitness />
         </main>
         <Footer />
       </div>

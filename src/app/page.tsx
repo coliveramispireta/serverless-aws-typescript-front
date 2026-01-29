@@ -31,7 +31,6 @@ export default function Home() {
           <ContactForm id="contacto" />
           <AboutMeSection /> 
           */}
-          
         </main>
         {/* <Footer /> */}
         <FooterBets />

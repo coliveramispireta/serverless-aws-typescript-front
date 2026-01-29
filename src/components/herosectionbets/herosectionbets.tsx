@@ -46,41 +46,40 @@ export default function HeroSectionBets() {
   }, []);
 
   return (
-<Box
-  component="section"
-  sx={{
-    width: "100%",
-    height: "100vh",          // 🔥 ocupa pantalla real
-    position: "relative",     // 🔥 vuelve al flujo
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  }}
->
+    <Box
+      component="section"
+      sx={{
+        width: "100%",
+        height: "100vh", // 🔥 ocupa pantalla real
+        position: "relative", // 🔥 vuelve al flujo
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+      }}
+    >
       {/* Flyer horizontal con efecto parallax */}
-<Box
-  component="img"
-  src="/bets/flyer_apuesta_horizontal.png"
-  alt="WFC Flyer"
-  sx={{
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-    objectFit: "cover",
+      <Box
+        component="img"
+        src="/bets/flyer_apuesta_horizontal.png"
+        alt="WFC Flyer"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
 
-    /* 🔥 CLAVE */
-    objectPosition: {
-      xs: "center top",
-      md: "center 20%",
-    },
+          /* 🔥 CLAVE */
+          objectPosition: {
+            xs: "center top",
+            md: "center 20%",
+          },
 
-    transform: `translateY(-40px) scale(1.05)`,
-    willChange: "transform",
-  }}
-/>
-
+          transform: `translateY(-40px) scale(1.05)`,
+          willChange: "transform",
+        }}
+      />
 
       {/* Gradient overlay mejorado - FIJO */}
       <Box
@@ -100,8 +99,7 @@ export default function HeroSectionBets() {
         sx={{
           position: "absolute",
           inset: 0,
-          background:
-            "linear-gradient(90deg, transparent, rgba(255,215,0,0.1), transparent)",
+          background: "linear-gradient(90deg, transparent, rgba(255,215,0,0.1), transparent)",
           backgroundSize: "1000px 100%",
           animation: `${shimmer} 3s infinite linear`,
           pointerEvents: "none",
@@ -119,7 +117,7 @@ export default function HeroSectionBets() {
           justifyContent: "space-between",
           minHeight: { xs: "60vh", md: "80vh" },
           py: { xs: 4, md: 6 },
-          mt: -7
+          mt: -7,
         }}
       >
         {/* Badges superiores - FIJO */}
@@ -146,11 +144,7 @@ export default function HeroSectionBets() {
             }}
           >
             <EmojiEvents sx={{ color: "#ffd700", fontSize: 20 }} />
-            <Typography
-              variant="body2"
-              fontWeight="700"
-              sx={{ color: "#ffd700" }}
-            >
+            <Typography variant="body2" fontWeight="700" sx={{ color: "#ffd700" }}>
               Premio + S/. 600
             </Typography>
           </Box>
@@ -170,11 +164,7 @@ export default function HeroSectionBets() {
             }}
           >
             <Group sx={{ color: "#4caf50", fontSize: 20 }} />
-            <Typography
-              variant="body2"
-              fontWeight="700"
-              sx={{ color: "#4caf50" }}
-            >
+            <Typography variant="body2" fontWeight="700" sx={{ color: "#4caf50" }}>
               06 Meses
             </Typography>
           </Box>
@@ -194,11 +184,7 @@ export default function HeroSectionBets() {
             }}
           >
             <TrendingUp sx={{ color: "#2196f3", fontSize: 20 }} />
-            <Typography
-              variant="body2"
-              fontWeight="700"
-              sx={{ color: "#2196f3" }}
-            >
+            <Typography variant="body2" fontWeight="700" sx={{ color: "#2196f3" }}>
               Resultados Reales
             </Typography>
           </Box>
@@ -320,8 +306,7 @@ export default function HeroSectionBets() {
                   animation: `${pulse} 2s ease-in-out infinite`,
                   minWidth: { xs: "100%", sm: 200 },
                   "&:hover": {
-                    background:
-                      "linear-gradient(45deg, #ffed4e 30%, #ff8c42 90%)",
+                    background: "linear-gradient(45deg, #ffed4e 30%, #ff8c42 90%)",
                     boxShadow: "0 15px 50px rgba(255,215,0,0.5)",
                     transform: "translateY(-2px)",
                   },
