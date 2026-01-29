@@ -118,8 +118,8 @@ export default function NavbarBets() {
             >
               Hola {userInfo.userName.split(" ")[0]}!
             </Typography>
-          ) : !pathname.includes("dashboard") && !isMobile ? null : //     size="small" //     color="secondary" //     variant="contained" //     fullWidth //   <Button // <Link href="/dashboard" style={{ textDecoration: "none" }}>
-          //     className={vibrate ? "vibrate" : ""}
+          ) : !pathname.includes("dashboard") &&
+            !isMobile ? null : //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //     fullWidth //   <Button // <Link href="/dashboard" style={{ textDecoration: "none" }}>
           //     sx={{
           //       borderRadius: 50,
           //       textTransform: "none",
@@ -133,9 +133,7 @@ export default function NavbarBets() {
           //     Accede&nbsp;al&nbsp;dashboard
           //   </Button>
           // </Link>
-          !pathname.includes("dashboard") &&
-            isMobile ? null : //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //   <Button // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
-          //     sx={{
+          !pathname.includes("dashboard") && isMobile ? null : //     sx={{ //     className={vibrate ? "vibrate" : ""} //     size="small" //     color="secondary" //     variant="contained" //   <Button // <Link href="/dashboard" style={{ textDecoration: "none", width: "100%" }}>
           //       width: "90%",
           //       position: "fixed",
           //       top: 68,
