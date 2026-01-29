@@ -5,6 +5,8 @@ import Navbar from "@/components/navbar/navbar";
 import useIndex from "@/hooks/useindex";
 import Footer from "@/components/footer/footer";
 import LoginPage, { LoginFormModel } from "@/components/loginpage/loginpage";
+import NavbarBets from "@/components/navbarbets/navbarbets";
+import FooterBets from "@/components/footerbets/footerbets";
 
 const Page = () => {
   const { apiCallState } = useIndex();
@@ -13,11 +15,11 @@ const Page = () => {
     <>
       <div className="pageContainer">
         {apiCallState.value && <Loading />}
-        <Navbar />
+        <NavbarBets />
         <main className="main">
           <LoginPage />
         </main>
-        <Footer />
+        <FooterBets />
       </div>
     </>
   );
