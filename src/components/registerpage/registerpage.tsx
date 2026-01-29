@@ -69,7 +69,7 @@ export default function RegisterPage() {
         displayName: data.displayName,
       });
       setSuccess(true);
-      router.push("/dashboard");
+      router.push("/bets");
     } catch (err: any) {
       setError(err.message || "Error al registrar");
     }

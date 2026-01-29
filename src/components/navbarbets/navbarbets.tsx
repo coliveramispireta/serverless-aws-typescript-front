@@ -214,24 +214,24 @@ export default function NavbarBets() {
                 anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
               >
                 {/* Dashboard */}
-                <Link href="/dashboard" passHref>
+                {/* <Link href="/dashboard" passHref>
                   <MenuItem component="a">
                     <ListItemIcon>
                       <SpaceDashboardRounded fontSize="small" />
                     </ListItemIcon>
                     Dashboard
                   </MenuItem>
-                </Link>
+                </Link> */}
 
                 {/* Perfil */}
-                <Link href="/dashboard/profile" passHref>
+                {/* <Link href="/dashboard/profile" passHref>
                   <MenuItem component="a">
                     <ListItemIcon>
                       <AccountCircle fontSize="small" />
                     </ListItemIcon>
                     Mi Perfil
                   </MenuItem>
-                </Link>
+                </Link> */}
 
                 <Divider />
 

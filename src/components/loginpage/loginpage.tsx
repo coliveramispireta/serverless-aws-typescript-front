@@ -50,7 +50,7 @@ export default function LoginPage() {
       await loginWithEmail({ email: username, password: password });
       setSuccess(true);
       setError("");
-      router.push("/dashboard");
+      router.push("/bets");
     } catch (error) {
       setSuccess(false);
       setError("Credenciales incorrectas");
