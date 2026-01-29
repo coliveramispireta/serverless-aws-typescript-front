@@ -17,8 +17,8 @@ const config: Enviroments = {
   local: {
     API_URL_LAMBDA: process.env.NEXT_PUBLIC_API_URL_LAMBDA_LOCAL!,
     AUTH_TOKEN: process.env.NEXT_PUBLIC_AUTH_TOKEN_LOCAL!,
-    REDIRECT_SIGNIN: "http://localhost:3000/bets",
-    REDIRECT_SIGNUP: "http://localhost:3000/loginbets",
+    REDIRECT_SIGNIN: "http://localhost:3000/dashboard",
+    REDIRECT_SIGNUP: "http://localhost:3000/login",
   },
   development: {
     API_URL_LAMBDA: process.env.NEXT_PUBLIC_API_URL_LAMBDA_DEV!,

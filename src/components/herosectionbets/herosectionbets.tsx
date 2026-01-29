@@ -290,7 +290,7 @@ export default function HeroSectionBets() {
               width: { xs: "100%", sm: "auto" },
             }}
           >
-            <Link href="/bets" style={{ textDecoration: "none" }}>
+            <Link href="/dashboard" style={{ textDecoration: "none" }}>
               <Button
                 variant="contained"
                 size="large"
@@ -317,7 +317,7 @@ export default function HeroSectionBets() {
               </Button>
             </Link>
 
-            <Link href="/bets" style={{ textDecoration: "none" }}>
+            <Link href="/dashboard" style={{ textDecoration: "none" }}>
               <Button
                 variant="outlined"
                 size="large"

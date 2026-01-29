@@ -69,7 +69,7 @@ export default function RegisterPage() {
         displayName: data.displayName,
       });
       setSuccess(true);
-      router.push("/bets");
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Error al registrar");
     }
@@ -443,7 +443,7 @@ export default function RegisterPage() {
 
             <Divider sx={{ my: 3 }} />
 
-            <Button variant="outlined" onClick={() => router.push("/loginbets")}>
+            <Button variant="outlined" onClick={() => router.push("/login")}>
               Volver al login
             </Button>
           </Box>

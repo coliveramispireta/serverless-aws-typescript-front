@@ -50,7 +50,7 @@ export default function LoginPage() {
       await loginWithEmail({ email: username, password: password });
       setSuccess(true);
       setError("");
-      router.push("/bets");
+      router.push("/dashboard");
     } catch (error) {
       setSuccess(false);
       setError("Credenciales incorrectas");
@@ -246,7 +246,7 @@ export default function LoginPage() {
                 id="btn_registrarcuenta_loginform"
                 tabIndex={19}
                 component={Link}
-                href="/loginbets/register"
+                href="/login/register"
               >
                 ¿Aún no tienes una cuenta? Registrate aquí
               </AMLinkButton>
@@ -256,7 +256,7 @@ export default function LoginPage() {
                 id="btn_olvidecontrasena_loginform"
                 tabIndex={20}
                 component={Link}
-                href="/loginbets/forgotpassword"
+                href="/login/forgotpassword"
               >
                 Olvidé mi contraseña
               </AMLinkButton>

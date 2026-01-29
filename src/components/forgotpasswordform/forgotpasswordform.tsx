@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
     try {
       await handleConfirmResetPassword(data.email, data.code!, data.newPassword!);
       setSuccess(true);
-      router.push("/loginbets");
+      router.push("/login");
     } catch (err: any) {
       setError(err.message || "Error al confirmar la nueva contraseña.");
     }
@@ -223,7 +223,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <Divider sx={{ my: 1 }} />
-        <Button variant="outlined" onClick={() => router.push("/loginbets")}>
+        <Button variant="outlined" onClick={() => router.push("/login")}>
           Volver al login
         </Button>
       </Box>

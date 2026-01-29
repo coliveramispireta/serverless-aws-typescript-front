@@ -21,7 +21,7 @@ export default function WithGuards({
       if (!hash) {
         console.log("no hay hash!");
         if (!result) {
-          router.push("/loginbets");
+          router.push("/login");
         } else {
           setCanRender(true);
         }
@@ -32,7 +32,7 @@ export default function WithGuards({
         console.log("loginGoogle:", loginGoogle);
 
         if (!loginGoogle) {
-          router.push("/loginbets");
+          router.push("/login");
         } else {
           setCanRender(true);
           // Limpiar el hash de la URL

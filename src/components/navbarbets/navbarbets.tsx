@@ -147,7 +147,7 @@ export default function NavbarBets() {
           null}
 
           {!userInfo.isLogged ? (
-            <Link href="/loginbets" style={{ textDecoration: "none" }}>
+            <Link href="/login" style={{ textDecoration: "none" }}>
               <Button
                 variant="outlined"
                 color="inherit"

@@ -17,7 +17,7 @@ export function sysAuthGuard() {
     //     } else {
     //       return false;
     //     }
-    return false;
+    return true;
   }
   return false;
 }
