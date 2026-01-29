@@ -7,7 +7,7 @@ import { ROLES } from "./global";
 import { getUserInfo } from "../services/xstorage.cross.service";
 
 //Todas las guardas deben de devolver siempre un booleano
-export function sysAuthGuard() {
+export function sysAuthGuardBets() {
   //Se obtiene la data del usuario directamente del store
   const userInfo = getUserInfo();
 
@@ -17,7 +17,7 @@ export function sysAuthGuard() {
     //     } else {
     //       return false;
     //     }
-    return false;
+    return true;
   }
   return false;
 }

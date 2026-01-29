@@ -443,7 +443,7 @@ export default function RegisterPage() {
 
             <Divider sx={{ my: 3 }} />
 
-            <Button variant="outlined" onClick={() => router.push("/login")}>
+            <Button variant="outlined" onClick={() => router.push("/loginbets")}>
               Volver al login
             </Button>
           </Box>

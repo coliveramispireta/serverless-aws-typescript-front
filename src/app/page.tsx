@@ -10,6 +10,10 @@ import Footer from "@/components/footer/footer";
 
 import ContactForm from "@/components/contactform/contactform";
 import RatingClient from "@/components/ratingclient/ratingclient";
+import { Fitness } from "@/components/fitness/fitness";
+import NavbarBets from "@/components/navbarbets/navbarbets";
+import HeroSectionBets from "@/components/herosectionbets/herosectionbets";
+import FooterBets from "@/components/footerbets/footerbets";
 
 export default function Home() {
   const { apiCallState } = useIndex();
@@ -18,13 +22,19 @@ export default function Home() {
     <>
       <div className="pageContainer">
         {apiCallState.value ? <Loading /> : null}
-        <Navbar />
+        {/* <Navbar /> */}
+        <NavbarBets />
         <main className="mainHome">
+          <HeroSectionBets />
+          {/* 
           <HeroSection />
           <ContactForm id="contacto" />
-          <AboutMeSection />
+          <AboutMeSection /> 
+          */}
+          
         </main>
-        <Footer />
+        {/* <Footer /> */}
+        <FooterBets />
       </div>
     </>
   );

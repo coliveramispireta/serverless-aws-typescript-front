@@ -13,6 +13,7 @@ import { useIdleTimer } from "react-idle-timer";
 import { sysAuthGuard } from "../authguards";
 import { useSearchParams } from "next/navigation";
 import { handleGoogleCallback } from "@/services/auth.service";
+import { sysAuthGuardBets } from "../authguardsbets";
 
 const metadata = {
   title: "gteate Next App",
@@ -134,7 +135,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <WithGuards authGuards={sysAuthGuard}>
+      <WithGuards authGuards={sysAuthGuardBets}>
         {children}
         </WithGuards>
 

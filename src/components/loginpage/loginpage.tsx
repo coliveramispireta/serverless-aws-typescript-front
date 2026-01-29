@@ -246,7 +246,7 @@ export default function LoginPage() {
                 id="btn_registrarcuenta_loginform"
                 tabIndex={19}
                 component={Link}
-                href="/login/register"
+                href="/loginbets/register"
               >
                 ¿Aún no tienes una cuenta? Registrate aquí
               </AMLinkButton>
@@ -256,7 +256,7 @@ export default function LoginPage() {
                 id="btn_olvidecontrasena_loginform"
                 tabIndex={20}
                 component={Link}
-                href="/login/forgotpassword"
+                href="/loginbets/forgotpassword"
               >
                 Olvidé mi contraseña
               </AMLinkButton>
