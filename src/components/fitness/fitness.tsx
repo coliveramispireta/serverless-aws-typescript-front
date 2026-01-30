@@ -261,21 +261,37 @@ export const Fitness = () => {
   };
 
   const textFieldStyles = {
-    "& .MuiOutlinedInput-root": {
-      bgcolor: "rgba(255,255,255,0.05)",
-      borderRadius: 2,
-      "& fieldset": { borderColor: "rgba(255,255,255,0.2)" },
-      "&:hover fieldset": { borderColor: "#ffd700" },
-      "&.Mui-focused fieldset": { borderColor: "#ffd700" },
+  "& .MuiOutlinedInput-root": {
+    bgcolor: "rgba(255,255,255,0.05)",
+    borderRadius: 2,
+    "& fieldset": { borderColor: "rgba(255,255,255,0.2)" },
+    "&:hover fieldset": { borderColor: "#ffd700" },
+    "&.Mui-focused fieldset": { borderColor: "#ffd700" },
+    "&.Mui-disabled fieldset": {
+     // borderColor: "rgba(255,215,0,0.4)",
     },
-    "& .MuiInputLabel-root": { color: "#aaa" },
-    "& .MuiInputLabel-root.Mui-focused": { color: "#ffd700" },
-    "& input": { color: "white" },
-    "& .MuiInputBase-input.Mui-disabled": {
-      WebkitTextFillColor: "#888",
-      opacity: 0.7,
-    },
-  };
+  },
+
+  /* LABEL */
+  "& .MuiInputLabel-root": {
+    color: "#aaa",
+  },
+  "& .MuiInputLabel-root.Mui-focused": {
+    color: "#ffd700",
+  },
+  "& .MuiInputLabel-root.Mui-disabled": {
+    color: "#ffd700",
+    opacity: 0.7,
+  },
+
+  /* INPUT */
+  "& input": { color: "white" },
+  "& .MuiInputBase-input.Mui-disabled": {
+    WebkitTextFillColor: "#d9c55b",
+    opacity: 0.6,
+  },
+};
+
 
   return (
     <Box
@@ -381,7 +397,7 @@ export const Fitness = () => {
                       label="Correo electrónico"
                       variant="outlined"
                       fullWidth
-                      //disabled
+                      disabled
                       value={formData.email}
                       sx={textFieldStyles}
                     />
