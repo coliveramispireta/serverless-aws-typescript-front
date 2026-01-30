@@ -45,6 +45,7 @@ import {
 } from "@mui/icons-material";
 import { createMember } from "@/services/bets/createmember.service";
 import { listMembers } from "@/services/bets/listmembers.service";
+import { getUserInfo } from "@/services/xstorage.cross.service";
 
 interface ParticipanteUI {
   nombre: string;
@@ -57,9 +58,7 @@ interface ParticipanteUI {
 }
 
 // Simulación de función getUserInfo
-const getUserInfo = () => ({
-  email: "usuario@ejemplo.com",
-});
+
 
 export const Fitness = () => {
   const [tab, setTab] = useState(0);
@@ -67,6 +66,7 @@ export const Fitness = () => {
   const [participanteSeleccionado, setParticipanteSeleccionado] = useState("");
   const [montoApuesta, setMontoApuesta] = useState("");
   const [participantes, setParticipantes] = useState<ParticipanteUI[]>([]);
+  const userinfo = getUserInfo();
 
   useEffect(() => {
     listMembers().then((data) => {
@@ -83,7 +83,7 @@ export const Fitness = () => {
 
   // Estados del formulario de inscripción
   const [formData, setFormData] = useState({
-    email: getUserInfo().email,
+    email: userinfo.email,
     nombreCompleto: "",
     edad: "",
     pesoActual: "",
