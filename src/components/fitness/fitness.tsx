@@ -157,7 +157,7 @@ export const Fitness = () => {
         ...formData,
         pesoInicial: formData.pesoActual,
       };
-      await createMember(formData);
+      await createMember(body);
       alert("¡Inscripción exitosa! Bienvenido al reto WFC");
     } catch (error) {
       console.error("Error en inscripción:", error);
@@ -381,7 +381,7 @@ export const Fitness = () => {
                       label="Correo electrónico"
                       variant="outlined"
                       fullWidth
-                      disabled
+                      //disabled
                       value={formData.email}
                       sx={textFieldStyles}
                     />
