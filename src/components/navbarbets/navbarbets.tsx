@@ -183,7 +183,7 @@ export default function NavbarBets() {
                   aria-expanded={open ? "true" : undefined}
                 >
                   <Avatar
-                    src={userInfo.photoURL}
+                    src={userInfo.photoURL || "/bets/avatar_men.jpg"}
                     alt={userInfo.userName}
                     sx={{ width: 40, height: 40 }}
                   />

@@ -1,52 +1,206 @@
-.container {
+.containerBets {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 1rem;
 }
 
-.laptop {
+.scaleContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+ // gap: 2rem;
+}
+
+.scale {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+.scaleDisplay {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 2rem 4rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 250px;
+  animation: glow 2s ease-in-out infinite;
+}
+
+.scalePlatform {
+  width: 280px;
+  height: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border-radius: 10px;
+  margin-top: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.progressRing {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.progressCircle {
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.progressText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   text-align: center;
 }
 
-.text {
-  margin-top: 20px;
-  font-size: 1.2rem;
-  color: #333;
-  font-family: "Segoe UI", sans-serif;
-  font-weight: 500;
+.fitnessIcons {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
 }
 
-.screen {
-  width: 600px;
-  height: 400px;
-  background-color: #1e1e1e;
-  border: 6px solid #2d2d2d;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+.icon {
+  font-size: 3rem;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 
-.code {
-  text-align: left; // <-- Asegura alineación a la izquierda
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 14px;
-  line-height: 1.4;
-  color: #d4d4d4;
-  background-color: #1e1e1e;
-  padding: 16px;
-  height: 100%;
-  overflow-y: auto;
+.iconDumbbell {
+  animation-delay: 0s;
 }
 
-.cursor {
-  color: #ffffff;
-  animation: blink 1s step-start infinite;
+.iconApple {
+  animation-delay: 0.3s;
 }
 
-@keyframes blink {
+.iconFire {
+  animation-delay: 0.6s;
+}
+
+.iconTrophy {
+  animation-delay: 0.9s;
+}
+
+.logoIcon {
+  font-size: 3.5rem;
+  filter: drop-shadow(0 4px 12px rgba(74, 222, 128, 0.5));
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
   50% {
-    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(74, 222, 128, 0.3);
+  }
+  50% {
+    box-shadow: 0 8px 48px rgba(74, 222, 128, 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-15px) scale(1.1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .scaleDisplay {
+    padding: 1.5rem 3rem;
+    min-width: 200px;
+    
+    h1 {
+      font-size: 3rem !important;
+    }
+  }
+
+  .scalePlatform {
+    width: 220px;
+  }
+
+  .progressRing {
+    width: 160px;
+    height: 160px;
+
+    svg {
+      width: 160px;
+      height: 160px;
+    }
+  }
+
+  .fitnessIcons {
+    gap: 1.5rem;
+  }
+
+  .icon {
+    font-size: 2.5rem;
+  }
+
+  .logoIcon {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .scaleDisplay {
+    padding: 1rem 2rem;
+    min-width: 160px;
+    
+    h1 {
+      font-size: 2.5rem !important;
+    }
+  }
+
+  .scalePlatform {
+    width: 180px;
+  }
+
+  .fitnessIcons {
+    gap: 1rem;
+  }
+
+  .icon {
+    font-size: 2rem;
   }
 }
