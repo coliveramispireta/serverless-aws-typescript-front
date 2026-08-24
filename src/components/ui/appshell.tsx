@@ -27,6 +27,7 @@ import {
   Person,
   Restaurant,
   School,
+  Share,
 } from "@mui/icons-material";
 import Link from "next/link";
 import Image from "next/image";
@@ -76,6 +77,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
     cleanData();
     router.push("/login");
+    handleMenuClose();
+  };
+
+  // Comparte el enlace de instalación (Web Share API con fallback a portapapeles)
+  const handleShareApp = async () => {
+    const url = window.location.origin + "/instalar";
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "KetoFlow",
+          text: "Tu transformación empieza con una decisión. Instala la app aquí:",
+          url,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        console.warn("share:", err);
+      }
+    }
     handleMenuClose();
   };
 
@@ -156,6 +178,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <MenuBook fontSize="small" />
               </ListItemIcon>
               Bases de keto
+            </MenuItem>
+            <MenuItem onClick={handleShareApp}>
+              <ListItemIcon>
+                <Share fontSize="small" />
+              </ListItemIcon>
+              Compartir app
             </MenuItem>
             <MenuItem onClick={() => router.push("/perfil")}>
               <ListItemIcon>

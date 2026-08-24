@@ -11,10 +11,10 @@ import { sysAuthGuard } from "../authguards";
 import WithGuardsLogin from "@/components/withauthguards/withauthguardslogin";
 import { UserContextProvider } from "@/context/usercontext/usercontextprovider";
 import NoSSRWrapper from "@/components/nossrwrapper/nossrwrapper";
-import { Amplify } from "aws-amplify";
-import { awsConfig } from "../../../aws.config";
 
-Amplify.configure(awsConfig);
+// NOTA: Amplify.configure vive ahora en ClientProvider (global para toda la app).
+// La duplicación aquí causaba pérdida intermitente del config OAuth
+// (InvalidRedirectException al iniciar sesión con Google).
 
 const metadata = {
   title: "gteate Next App",

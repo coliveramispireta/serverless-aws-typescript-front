@@ -9,6 +9,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Paper,
   Typography,
 } from "@mui/material";
 import { InstallMobile, IosShare, MoreVert, AddToHomeScreen } from "@mui/icons-material";
@@ -18,13 +19,20 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+interface InstallAppButtonProps {
+  /** En páginas dedicadas (ej. /instalar) mostrar confirmación si ya está instalada */
+  showInstalledState?: boolean;
+}
+
 /**
  * Botón visible "Instalar app":
  * - Si el navegador ofrece instalación nativa (Chrome/Android), lanza el prompt.
  * - Si no (iOS Safari), abre instrucciones guiadas según la plataforma.
- * - Se oculta cuando la app ya está instalada.
+ * - Se oculta cuando la app ya está instalada (salvo showInstalledState).
  */
-export default function InstallAppButton() {
+export default function InstallAppButton({
+  showInstalledState = false,
+}: InstallAppButtonProps = {}) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -59,7 +67,7 @@ export default function InstallAppButton() {
     };
   }, []);
 
-  if (installed) return null;
+  if (installed && !showInstalledState) return null;
 
   const handleClick = async () => {
     if (deferredPrompt) {
@@ -74,6 +82,29 @@ export default function InstallAppButton() {
       setHelpOpen(true);
     }
   };
+
+  if (installed) {
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          border: "1px solid",
+          borderColor: "AMSnowGray.main",
+          bgcolor: "AMUltraLightBlue.main",
+          textAlign: "center",
+        }}
+      >
+        <Typography variant="body2" fontWeight={700}>
+          ✅ Ya tienes KetoFlow instalada
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Búscala junto a tus otras apps
+        </Typography>
+      </Paper>
+    );
+  }
 
   return (
     <>

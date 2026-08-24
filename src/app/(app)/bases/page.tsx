@@ -199,12 +199,23 @@ export default function BasesPage() {
                 sx={{ px: 2, py: 0.5, "& .MuiAccordionSummary-content": { my: 1.25 } }}
               >
                 <Box display="flex" alignItems="center" gap={1.5} minWidth={0}>
-                  <Typography fontSize={24}>{article.emoji}</Typography>
-                  <Box minWidth={0} flex={1}>
-                    <Typography fontWeight={700} noWrap>
+                  <Typography fontSize={24} flexShrink={0}>
+                    {article.emoji}
+                  </Typography>
+                  <Box flex={1}>
+                    <Typography
+                      fontWeight={700}
+                      sx={{
+                        overflow: "hidden",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {article.titulo}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                    <Typography variant="caption" color="text.secondary" display="block">
                       {CAT_LABELS[article.categoria]} · {article.minutosLectura} min de lectura
                     </Typography>
                   </Box>

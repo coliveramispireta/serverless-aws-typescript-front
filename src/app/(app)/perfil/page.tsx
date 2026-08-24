@@ -8,15 +8,18 @@ import {
   CardContent,
   Chip,
   Divider,
+  FormControlLabel,
   Grid,
+  Switch,
   TextField as MuiTextField,
   Typography,
 } from "@mui/material";
-import { School, Logout } from "@mui/icons-material";
+import { School, Logout, NotificationsActive } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { signOut } from "aws-amplify/auth";
 
 import SectionHeader from "@/components/ui/sectionheader";
+import usePush from "@/hooks/usepush";
 import { buildLocalUserProfile, getProfilePrefs, saveProfilePrefs, ProfilePrefs } from "@/lib/profileprefs";
 import { isCoachEmail } from "@/lib/auth/roles";
 import { getProfile, updateProfile } from "@/services/keto/profile.service";
@@ -34,6 +37,7 @@ export default function PerfilPage() {
   const [saved, setSaved] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const coach = isCoachEmail(profile.email);
+  const push = usePush();
 
   // Cargar perfil desde el backend (si está disponible)
   useEffect(() => {
@@ -152,6 +156,45 @@ export default function PerfilPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Notificaciones push */}
+      {push.supported && (
+        <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 2 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
+              <Box display="flex" alignItems="center" gap={1.5}>
+                <NotificationsActive color={push.subscribed ? "primary" : "disabled"} />
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Notificaciones
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {push.subscribed
+                      ? "Activas: comentarios y avisos de tu coach"
+                      : "Desactivadas: te perderás avisos del grupo"}
+                  </Typography>
+                </Box>
+              </Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={push.subscribed}
+                    disabled={push.busy}
+                    onChange={(_, checked) => (checked ? push.enable() : push.disable())}
+                  />
+                }
+                label=""
+              />
+            </Box>
+            {!push.subscribed && push.permission === "denied" && (
+              <Typography variant="caption" color="error" display="block" mt={1}>
+                Los permisos están bloqueados en el navegador. Actívalos desde la configuración
+                del sitio (ícono 🔒 junto a la dirección).
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Divider sx={{ my: 2 }} />
 

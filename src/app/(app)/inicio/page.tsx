@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Avatar,
   Box,
@@ -10,10 +10,12 @@ import {
   Grid,
   LinearProgress,
   Typography,
-} from "@mui/material";import {
+} from "@mui/material";
+import {
   Flag,
   LocalFireDepartment,
   MonitorWeight,
+  NotificationsActive,
   Speed,
   TrendingDown,
 } from "@mui/icons-material";
@@ -24,6 +26,7 @@ import SourceBadge from "@/components/ui/sourcebadge";
 import StatCard from "@/components/ui/statcard";
 import WeightChart from "@/components/ui/weightchart";
 import useUserData from "@/hooks/useuserdata";
+import usePush from "@/hooks/usepush";
 import { computeMetrics, buildWeightSeries } from "@/lib/engine/metrics";
 import { getAutoMotivation, getAutoRecommendation } from "@/lib/engine/motivation";
 import { evaluateAchievements } from "@/lib/engine/achievements";
@@ -40,6 +43,10 @@ export default function InicioPage() {
   const userInfo = getUserInfo();
   const prefs = getProfilePrefs();
   const { weights, meals, loading, error, reload } = useUserData();
+  const push = usePush();
+
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const [pushMsgOk, setPushMsgOk] = useState(false);
 
   const metrics = useMemo(
     () => computeMetrics(weights, meals, prefs),
@@ -127,8 +134,57 @@ export default function InicioPage() {
         </CardContent>
       </Card>
 
-      {/* Saludo */}
-      <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
+      {/* ---------- Banner: activar notificaciones ---------- */}
+      {push.supported && !push.subscribed && push.permission === "default" && (
+        <Card
+          elevation={0}
+          sx={{
+            border: "1px solid",
+            borderColor: "AMSnowGray.main",
+            bgcolor: "AMUltraLightBlue.main",
+          }}
+        >
+          <CardContent sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5, "&:last-child": { pb: 2 } }}>
+            <NotificationsActive color="primary" />
+            <Box flex={1} minWidth={0}>
+              <Typography variant="body2" fontWeight={700}>
+                No te pierdas nada
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Comentarios de la comunidad y avisos de tu coach, directo a tu celular
+              </Typography>
+              {pushMsg && (
+                <Typography
+                  variant="caption"
+                  display="block"
+                  color={pushMsgOk ? "primary" : "error"}
+                >
+                  {pushMsg}
+                </Typography>
+              )}
+            </Box>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={push.busy}
+              onClick={async () => {
+                const ok = await push.enable();
+                if (ok) {
+                  setPushMsg("¡Listo! Activadas 🔔");
+                  setPushMsgOk(true);
+                } else {
+                  setPushMsg("No se pudo activar. Revisa permisos del navegador.");
+                  setPushMsgOk(false);
+                }
+              }}
+            >
+              Activar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Saludo */}      <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
         <Avatar src={userInfo.photoURL || undefined} sx={{ width: 44, height: 44, bgcolor: "primary.main" }}>
           {userInfo.userName?.charAt(0)?.toUpperCase() || "?"}
         </Avatar>

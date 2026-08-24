@@ -78,3 +78,48 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// ============================================================
+// Notificaciones Push (Web Push / VAPID)
+// ============================================================
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "KetoFlow";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/keto/logo.svg",
+      badge: "/keto/logo-maskable.svg",
+      tag: data.tag || undefined,
+      vibrate: [100, 50, 100],
+      data: { url: data.url || "/inicio" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/inicio";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Si la app ya está abierta, enfócala y navega
+      for (const client of clientList) {
+        if ("focus" in client) {
+          return client
+            .navigate(target)
+            .then(() => (client.focus ? client.focus() : undefined))
+            .catch(() => undefined);
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

@@ -102,8 +102,31 @@ export async function loginWithGoogle() {
     console.log("Inicio de sesión con google exitoso");
     return true;
   } catch (error: any) {
+    const message = String(error?.message || error);
+
+    /**
+     * InvalidRedirectException: la config OAuth se perdió o llegó vacía
+     * (p.ej. una re-configuración parcial de Amplify). Auto-reparación:
+     * re-configurar con awsConfig completo y reintentar UNA vez.
+     */
+    if (message.includes("InvalidRedirect") || message.includes("redirect")) {
+      console.warn("loginWithGoogle: reconfigurando Amplify y reintentando…");
+      try {
+        const [{ Amplify }, { awsConfig }] = await Promise.all([
+          import("aws-amplify"),
+          import("../../aws.config"),
+        ]);
+        Amplify.configure(awsConfig);
+        await signInWithRedirect({ provider: "Google" });
+        return true;
+      } catch (retryError: any) {
+        console.error("Detalle del error al iniciar sesión con Google (retry):", retryError);
+        throw new Error(retryError?.message || "Error al iniciar sesión con Google.");
+      }
+    }
+
     console.error("Detalle del error al iniciar sesión con Google:", error);
-    throw new Error(error.message || "Error al iniciar sesión con Google.");
+    throw new Error(message || "Error al iniciar sesión con Google.");
   }
 }
 
