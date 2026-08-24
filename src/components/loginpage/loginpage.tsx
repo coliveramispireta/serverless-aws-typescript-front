@@ -35,6 +35,7 @@ export class LoginFormModel {
 export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [passwordValue, setPasswordValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [allowVisibilityToggle, setAllowVisibilityToggle] = useState(false);
@@ -44,6 +45,13 @@ export default function LoginPage() {
   const router = useRouter();
   const userInfo = getUserInfo();
   const model = new LoginFormModel();
+
+  // Redirect del interceptor al expirar la sesión (/login?expired=1)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSessionExpired(new URLSearchParams(window.location.search).get("expired") === "1");
+    }
+  }, []);
 
   const {
     control,
@@ -122,6 +130,11 @@ export default function LoginPage() {
   return (
     <>
       {/* Mensajes */}
+      {sessionExpired && (
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: 3 }}>
+          Tu sesión expiró. Inicia sesión de nuevo para continuar.
+        </Alert>
+      )}
       {error && (
         <Alert severity="error" sx={{ mb: 2, borderRadius: 3 }}>
           {error}

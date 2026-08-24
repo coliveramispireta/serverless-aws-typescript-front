@@ -138,6 +138,25 @@ export async function handleGoogleCallback(hash: string) {
   }
 }
 
+/**
+ * Devuelve un idToken VIVO. Amplify renueva automáticamente el token usando
+ * el refresh token cuando expiró (forceRefresh=true fuerza la llamada).
+ * Sincroniza la copia en sessionStorage para guards y otros lectores.
+ * Devuelve null si la sesión es irrecuperable o Amplify no está listo.
+ */
+export async function getFreshIdToken(force = false): Promise<string | null> {
+  try {
+    const session = await fetchAuthSession({ forceRefresh: force });
+    const idToken = session.tokens?.idToken?.toString();
+    if (!idToken) return null;
+    setToken(idToken);
+    return idToken;
+  } catch (error) {
+    console.warn("getFreshIdToken:", error);
+    return null;
+  }
+}
+
 // export async function resetPassword(email: string) {
 export async function handleResetPassword(username: string) {
   try {
