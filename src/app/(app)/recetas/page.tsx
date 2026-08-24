@@ -13,6 +13,7 @@ import {
   LinearProgress,
   Typography,
 } from "@mui/material";
+import { MenuBook } from "@mui/icons-material";
 
 import EmptyState from "@/components/ui/emptystate";
 import SectionHeader from "@/components/ui/sectionheader";
@@ -156,6 +157,13 @@ export default function RecetasPage() {
           </>
         )}
       </Dialog>
+
+      {/* Cruce hacia Bases de Keto */}
+      <Box textAlign="center" mt={3}>
+        <Button component="a" href="/bases" size="small" startIcon={<MenuBook />}>
+          Aprende las bases de keto
+        </Button>
+      </Box>
     </Box>
   );
 }

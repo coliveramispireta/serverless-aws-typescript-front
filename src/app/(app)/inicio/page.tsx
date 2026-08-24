@@ -233,6 +233,34 @@ export default function InicioPage() {
         </CardContent>
       </Card>
 
+      {/* Acceso a Bases de Keto */}
+      <Card
+        elevation={0}
+        component={Link}
+        href="/bases"
+        sx={{
+          border: "1px solid",
+          borderColor: "AMSnowGray.main",
+          textDecoration: "none",
+          cursor: "pointer",
+          transition: "box-shadow .2s",
+          "&:hover": { boxShadow: 4 },
+        }}
+      >
+        <CardContent sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5, "&:last-child": { pb: 2 } }}>
+          <Typography fontSize={28}>📚</Typography>
+          <Box flex={1} minWidth={0}>
+            <Typography fontWeight={700}>Aprende lo básico</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Entiende la ciencia detrás de tus resultados
+            </Typography>
+          </Box>
+          <Typography color="primary" fontWeight={800}>
+            →
+          </Typography>
+        </CardContent>
+      </Card>
+
       {/* Recomendación automática */}
       <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
         <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>

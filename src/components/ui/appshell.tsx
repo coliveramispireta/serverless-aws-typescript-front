@@ -23,6 +23,7 @@ import {
   Home,
   LightModeOutlined,
   Logout,
+  MenuBook,
   Person,
   Restaurant,
   School,
@@ -149,6 +150,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {mode === "light" ? <DarkModeOutlined fontSize="small" /> : <LightModeOutlined fontSize="small" />}
               </ListItemIcon>
               {mode === "light" ? "Modo oscuro" : "Modo claro"}
+            </MenuItem>
+            <MenuItem onClick={() => router.push("/bases")}>
+              <ListItemIcon>
+                <MenuBook fontSize="small" />
+              </ListItemIcon>
+              Bases de keto
             </MenuItem>
             <MenuItem onClick={() => router.push("/perfil")}>
               <ListItemIcon>
