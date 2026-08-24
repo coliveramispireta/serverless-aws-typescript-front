@@ -3,17 +3,34 @@ import { createTheme } from "@mui/material/styles";
 import amthemevars from "../styles/amthemevars.module.scss";
 import { neueHaasUnicaProMedium, neueHaasUnicaProRegular } from "./fonts";
 
+/**
+ * Tema "KetoCoach": mobile-first, claro y moderno.
+ * Paleta definida en styles/amthemevars.module.scss.
+ */
 export const theme = createTheme({
   typography: {
     fontFamily: [neueHaasUnicaProRegular.style.fontFamily].join(","),
   },
+  shape: {
+    borderRadius: 14,
+  },
   palette: {
     mode: "light",
+    background: {
+      default: amthemevars.AMUltraLightGray__main,
+      paper: amthemevars.AMWhite__main,
+    },
+    text: {
+      primary: amthemevars.AMBrandBlue__main,
+      secondary: amthemevars.AMDarkGray__main,
+    },
     primary: {
       main: amthemevars.primary__main,
+      contrastText: amthemevars.primary__contrastText,
     },
     secondary: {
       main: amthemevars.secondary__main,
+      contrastText: amthemevars.secondary__contrastText,
     },
     azulcontraste: {
       main: amthemevars.azulcontraste__main,
@@ -100,98 +117,6 @@ export const theme = createTheme({
       main: amthemevars.AMYellow__main,
       contrastText: amthemevars.AMYellow__contrastText,
     },
-    AMBasicFare: {
-      main: amthemevars.AMBasicFare__main,
-      contrastText: amthemevars.AMBasicFare__contrastText,
-    },
-    AMClassicFare: {
-      main: amthemevars.AMClassicFare__main,
-      contrastText: amthemevars.AMClassicFare__contrastText,
-    },
-    AMFlexibleFare: {
-      main: amthemevars.AMFlexibleFare__main,
-      contrastText: amthemevars.AMFlexibleFare__contrastText,
-    },
-    AMPlusFare: {
-      main: amthemevars.AMPlusFare__main,
-      contrastText: amthemevars.AMPlusFare__contrastText,
-    },
-    AMConfortFare: {
-      main: amthemevars.AMConfortFare__main,
-      contrastText: amthemevars.AMConfortFare__contrastText,
-    },
-    AMPremierFare: {
-      main: amthemevars.AMPremierFare__main,
-      contrastText: amthemevars.AMPremierFare__contrastText,
-    },
-    BGBasicFare: {
-      main: amthemevars.BGBasicFare__main,
-      contrastText: amthemevars.BGBasicFare__contrastText,
-    },
-    BGClassicFare: {
-      main: amthemevars.BGClassicFare__main,
-      contrastText: amthemevars.BGClassicFare__contrastText,
-    },
-    BGConfortFare: {
-      main: amthemevars.BGConfortFare__main,
-      contrastText: amthemevars.BGConfortFare__contrastText,
-    },
-    BGPremierFare: {
-      main: amthemevars.BGPremierFare__main,
-      contrastText: amthemevars.BGPremierFare__contrastText,
-    },
-    BGFlexibleFare: {
-      main: amthemevars.BGFlexibleFare__main,
-      contrastText: amthemevars.BGFlexibleFare__contrastText,
-    },
-    BGPlusFare: {
-      main: amthemevars.BGPlusFare__main,
-      contrastText: amthemevars.BGPlusFare__contrastText,
-    },
-    BasicSecondary: {
-      main: amthemevars.BasicSecondary__main,
-      contrastText: amthemevars.BasicSecondary__contrastText,
-    },
-    FlexSecondary: {
-      main: amthemevars.FlexSecondary__main,
-      contrastText: amthemevars.FlexSecondary__contrastText,
-    },
-    AMPlusSecondary: {
-      main: amthemevars.AMPlusSecondary__main,
-      contrastText: amthemevars.AMPlusSecondary__contrastText,
-    },
-    ConfortSecondary: {
-      main: amthemevars.ConfortSecondary__main,
-      contrastText: amthemevars.ConfortSecondary__contrastText,
-    },
-    PremierSecondary: {
-      main: amthemevars.PremierSecondary__main,
-      contrastText: amthemevars.PremierSecondary__contrastText,
-    },
-    BorderBasicFare: {
-      main: amthemevars.BorderBasicFare__main,
-      contrastText: amthemevars.BorderBasicFare__contrastText,
-    },
-    BorderClassicFare: {
-      main: amthemevars.BorderClassicFare__main,
-      contrastText: amthemevars.BorderClassicFare__contrastText,
-    },
-    BorderFlexibleFare: {
-      main: amthemevars.BorderFlexibleFare__main,
-      contrastText: amthemevars.BorderFlexibleFare__contrastText,
-    },
-    BorderPlusFare: {
-      main: amthemevars.BorderPlusFare__main,
-      contrastText: amthemevars.BorderPlusFare__contrastText,
-    },
-    BorderConfortFare: {
-      main: amthemevars.BorderConfortFare__main,
-      contrastText: amthemevars.BorderConfortFare__contrastText,
-    },
-    BorderPremierFare: {
-      main: amthemevars.BorderPremierFare__main,
-      contrastText: amthemevars.BorderPremierFare__contrastText,
-    },
   },
   components: {
     MuiButton: {
@@ -199,31 +124,37 @@ export const theme = createTheme({
         disableElevation: true,
       },
       styleOverrides: {
-        // Name of the slot
         root: {
-          // Some CSS
-          borderRadius: 25,
-          padding: ".8rem 3rem ",
+          borderRadius: 999,
+          textTransform: "none",
+          fontWeight: 600,
+          padding: ".65rem 1.75rem",
           ":disabled": {
             color: "white",
           },
         },
       },
     },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        rounded: {
+          borderRadius: 16,
+        },
+      },
+    },
     MuiRadio: {
       styleOverrides: {
         root: {
-          color: "#e5e5e5",
+          color: amthemevars.AMSnowGray__main,
           "&.Mui-checked": {
-            color: "#007dc3",
-          },
-          "& .MuiSvgIcon-root:not(.MuiSvgIcon-root ~ .MuiSvgIcon-root)": {
-            color: "gray",
-            strokeWidth: "60px",
-          },
-          "& .MuiSvgIcon-root:not(.MuiSvgIcon-root ~ .MuiSvgIcon-root) path": {
-            color: "gray",
-            strokeWidth: "60px",
+            color: amthemevars.primary__main,
           },
         },
       },
@@ -233,7 +164,7 @@ export const theme = createTheme({
         root: {
           color: amthemevars.AMSnowGray__main,
           "&.Mui-checked": {
-            color: amthemevars.AMLightBlue__main,
+            color: amthemevars.primary__main,
           },
         },
       },

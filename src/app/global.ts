@@ -4,6 +4,7 @@ interface Configuration {
   AUTH_TOKEN: string;
   REDIRECT_SIGNIN: string;
   REDIRECT_SIGNUP: string;
+  COACH_EMAILS: string;
 }
 
 // Define una interfaz Enviroments que describe las configuraciones para diferentes entornos
@@ -19,18 +20,21 @@ const config: Enviroments = {
     AUTH_TOKEN: process.env.NEXT_PUBLIC_AUTH_TOKEN_LOCAL!,
     REDIRECT_SIGNIN: "http://localhost:3000/dashboard",
     REDIRECT_SIGNUP: "http://localhost:3000/login",
+    COACH_EMAILS: process.env.NEXT_PUBLIC_COACH_EMAILS_LOCAL ?? "",
   },
   development: {
     API_URL_LAMBDA: process.env.NEXT_PUBLIC_API_URL_LAMBDA_DEV!,
     AUTH_TOKEN: process.env.NEXT_PUBLIC_AUTH_TOKEN_DEV!,
     REDIRECT_SIGNIN: process.env.NEXT_PUBLIC_REDIRECT_SIGNIN_DEV!,
     REDIRECT_SIGNUP: process.env.NEXT_PUBLIC_REDIRECT_SIGNUP_DEV!,
+    COACH_EMAILS: process.env.NEXT_PUBLIC_COACH_EMAILS_DEV ?? "",
   },
   production: {
     API_URL_LAMBDA: process.env.NEXT_PUBLIC_API_URL_LAMBDA_PROD!,
     AUTH_TOKEN: process.env.NEXT_PUBLIC_AUTH_TOKEN_PROD!,
     REDIRECT_SIGNIN: process.env.NEXT_PUBLIC_REDIRECT_SIGNIN_PROD!,
     REDIRECT_SIGNUP: process.env.NEXT_PUBLIC_REDIRECT_SIGNUP_PROD!,
+    COACH_EMAILS: process.env.NEXT_PUBLIC_COACH_EMAILS_PROD ?? "",
   },
 };
 const env = process.env.APP_ENV;
@@ -39,10 +43,20 @@ export const API_URL_LAMBDA = config[env as keyof Enviroments].API_URL_LAMBDA;
 export const AUTH_TOKEN = config[env as keyof Enviroments].AUTH_TOKEN;
 export const REDIRECT_SIGNIN = config[env as keyof Enviroments].REDIRECT_SIGNIN;
 export const REDIRECT_SIGNUP = config[env as keyof Enviroments].REDIRECT_SIGNUP;
+export const COACH_EMAILS = config[env as keyof Enviroments].COACH_EMAILS;
 export const SITE_KEY = "";
 
 export const ROLES = {
   INVITADO: "Invitado",
   USERLOGGED: "UserLogged",
   USERADMIN: "UserAdmin",
+  COACH: "Coach",
 };
+
+/**
+ * Lista de correos con rol de Coach, configurada por entorno.
+ * Ej: NEXT_PUBLIC_COACH_EMAILS_DEV=coach@mail.com,otro@mail.com
+ */
+export const coachEmails: string[] = COACH_EMAILS.split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter((email) => email.length > 0);

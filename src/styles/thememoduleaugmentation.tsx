@@ -1,8 +1,7 @@
 import {
   /* the components you used */
-  createTheme,
+  Palette,
   PaletteOptions,
-  ThemeProvider,
 } from "@mui/material/styles";
 
 declare module "@mui/material/styles" {
@@ -28,33 +27,10 @@ declare module "@mui/material/styles" {
     AMPurple: Palette["primary"];
     AMOrange: Palette["primary"];
     AMYellow: Palette["primary"];
-    AMBasicFare: Palette["primary"];
-    AMClassicFare: Palette["primary"];
-    AMFlexibleFare: Palette["primary"];
-    AMPlusFare: Palette["primary"];
-    AMConfortFare: Palette["primary"];
-    AMPremierFare: Palette["primary"];
-    BGBasicFare: Palette["primary"];
-    BGClassicFare: Palette["primary"];
-    BGConfortFare: Palette["primary"];
-    BGPremierFare: Palette["primary"];
-    BGFlexibleFare: Palette["primary"];
-    BGPlusFare: Palette["primary"];
-    BasicSecondary: Palette["primary"];
-    FlexSecondary: Palette["primary"];
-    AMPlusSecondary: Palette["primary"];
-    ConfortSecondary: Palette["primary"];
-    PremierSecondary: Palette["primary"];
-    BorderBasicFare: Palette["primary"];
-    BorderClassicFare: Palette["primary"];
-    BorderFlexibleFare: Palette["primary"];
-    BorderPlusFare: Palette["primary"];
-    BorderConfortFare: Palette["primary"];
-    BorderPremierFare: Palette["primary"];
   }
   export type PalleteOnlyKeys = keyof Palette;
   interface PaletteOptions {
-    azulcontraste: PaletteOptions["primary"];
+    azulcontraste?: PaletteOptions["primary"];
     AMBrandBlue?: PaletteOptions["primary"];
     AMDarkGray?: PaletteOptions["primary"];
     AMLightBlue?: PaletteOptions["primary"];
@@ -73,29 +49,6 @@ declare module "@mui/material/styles" {
     AMPurple?: PaletteOptions["primary"];
     AMOrange?: PaletteOptions["primary"];
     AMYellow?: PaletteOptions["primary"];
-    AMBasicFare?: PaletteOptions["primary"];
-    AMClassicFare?: PaletteOptions["primary"];
-    AMFlexibleFare?: PaletteOptions["primary"];
-    AMPlusFare?: PaletteOptions["primary"];
-    AMConfortFare?: PaletteOptions["primary"];
-    AMPremierFare?: PaletteOptions["primary"];
-    BGBasicFare?: PaletteOptions["primary"];
-    BGClassicFare?: PaletteOptions["primary"];
-    BGConfortFare?: PaletteOptions["primary"];
-    BGPremierFare?: PaletteOptions["primary"];
-    BGFlexibleFare?: PaletteOptions["primary"];
-    BGPlusFare?: PaletteOptions["primary"];
-    BasicSecondary?: PaletteOptions["primary"];
-    FlexSecondary?: PaletteOptions["primary"];
-    AMPlusSecondary?: PaletteOptions["primary"];
-    ConfortSecondary?: PaletteOptions["primary"];
-    PremierSecondary?: PaletteOptions["primary"];
-    BorderBasicFare?: PaletteOptions["primary"];
-    BorderClassicFare?: PaletteOptions["primary"];
-    BorderFlexibleFare?: PaletteOptions["primary"];
-    BorderPlusFare?: PaletteOptions["primary"];
-    BorderConfortFare?: PaletteOptions["primary"];
-    BorderPremierFare?: PaletteOptions["primary"];
   }
 }
 
@@ -105,6 +58,12 @@ declare module "@mui/material/Button" {
     info: true;
     success: true;
     warning: true;
+    AMLightBlue: true;
+    AMTeal: true;
+    AMOrange: true;
+    AMPurple: true;
+    AMRed: true;
+    AMGreen: true;
   }
 }
 
@@ -165,5 +124,10 @@ declare module "@mui/material/Chip" {
     success: true;
     warning: true;
     AMSnowGray: true;
+    AMUltraLightBlue: true;
+    AMLightBlue: true;
+    AMTeal: true;
+    AMOrange: true;
+    AMPurple: true;
   }
 }

@@ -1,28 +1,11 @@
 "use client";
-import React, { use, useEffect, useState } from "react";
-import Loading from "../loading";
-import Navbar from "@/components/navbar/navbar";
-import useIndex from "@/hooks/useindex";
-import Footer from "@/components/footer/footer";
-import LoginPage, { LoginFormModel } from "@/components/loginpage/loginpage";
-import NavbarBets from "@/components/navbarbets/navbarbets";
-import FooterBets from "@/components/footerbets/footerbets";
+import AuthLayout from "@/components/ui/authlayout";
+import LoginPage from "@/components/loginpage/loginpage";
 
-const Page = () => {
-  const { apiCallState } = useIndex();
-
-  return (
-    <>
-      <div className="pageContainer">
-        {apiCallState.value && <Loading />}
-        <NavbarBets />
-        <main className="main">
-          <LoginPage />
-        </main>
-        <FooterBets />
-      </div>
-    </>
-  );
-};
+const Page = () => (
+  <AuthLayout>
+    <LoginPage />
+  </AuthLayout>
+);
 
 export default Page;

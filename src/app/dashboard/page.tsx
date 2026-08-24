@@ -1,29 +1,18 @@
 "use client";
-import React, { use, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Loading from "../loading";
-import Navbar from "@/components/navbar/navbar";
-import useIndex from "@/hooks/useindex";
-import Footer from "@/components/footer/footer";
-import DashboardTicket from "@/components/dashboardticket/dashboardticket";
-import { Fitness } from "@/components/fitness/fitness";
-import NavbarBets from "@/components/navbarbets/navbarbets";
-import FooterBets from "@/components/footerbets/footerbets";
 
-const Page = () => {
-  const { apiCallState } = useIndex();
+/**
+ * /dashboard se mantiene como ruta de callback de Cognito/Google
+ * (REDIRECT_SIGNIN apunta aquí) y redirige al inicio de la app.
+ */
+export default function DashboardRedirect() {
+  const router = useRouter();
 
-  return (
-    <>
-      <div className="pageContainer">
-        {apiCallState.value && <Loading />}
-        <NavbarBets />
-        <main className="main">
-          <Fitness />
-        </main>
-        <FooterBets />
-      </div>
-    </>
-  );
-};
+  useEffect(() => {
+    router.replace("/inicio");
+  }, [router]);
 
-export default Page;
+  return <Loading />;
+}

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { API_URL_LAMBDA, AUTH_TOKEN } from "@/app/global";
+import { getToken } from "@/services/xstorage.cross.service";
 
 /** ----INSTANCIA PARA LAMBDAS ------- */
 export const axiosInstanceLambda = axios.create({
@@ -9,11 +10,16 @@ export const axiosInstanceLambda = axios.create({
 
 axiosInstanceLambda.interceptors.request.use(
   (config) => {
-    const authToken = AUTH_TOKEN;
     config.headers["Content-Type"] = "application/json";
-    if (!(authToken === null || authToken === undefined || authToken === "")) {
-      //FALTA AGREGAR HEADERS DE AUTHORIZATIONTOKEN EN EL BACK
-      config.headers.Authorization = `Bearer ${authToken}`;
+    /**
+     * Prioridad: ID token de Cognito (endpoints KetoCoach, validados con
+     * User Pool Authorizer). Fallback al token estático para endpoints legacy.
+     */
+    const cognitoToken = getToken();
+    if (cognitoToken) {
+      config.headers.Authorization = `Bearer ${cognitoToken}`;
+    } else if (!(AUTH_TOKEN === null || AUTH_TOKEN === undefined || AUTH_TOKEN === "")) {
+      config.headers.Authorization = `Bearer ${AUTH_TOKEN}`;
     }
     return config;
   },

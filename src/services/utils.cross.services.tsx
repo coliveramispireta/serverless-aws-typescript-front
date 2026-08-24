@@ -5,13 +5,14 @@ import { DatosUsuarioState } from "@/context/usercontext/usercontext";
 
 export function mapDatosUsuario(user: any): DatosUsuarioState {
   return {
-    id: user.event_id,
+    // `sub` es el identificador estable del usuario en Cognito (userId en el backend keto)
+    id: user.sub || user.event_id || user["cognito:username"] || "",
     email: user.email || "",
-    userName: user.name || "",
+    userName: user.name || user.given_name || "",
     phoneNumber: user.phoneNumber || "",
     role: ROLES.USERLOGGED,
     isLogged: true,
-    photoURL: user.photoURL || "",
+    photoURL: user.picture || user.photoURL || "",
   };
 }
 
