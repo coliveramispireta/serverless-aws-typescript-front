@@ -10,8 +10,7 @@ import {
   Grid,
   LinearProgress,
   Typography,
-} from "@mui/material";
-import {
+} from "@mui/material";import {
   Flag,
   LocalFireDepartment,
   MonitorWeight,
@@ -81,6 +80,53 @@ export default function InicioPage() {
 
   return (
     <Box display="flex" flexDirection="column" gap={2}>
+      {/* ---------- Hero KetoFlow ---------- */}
+      <Card
+        elevation={0}
+        sx={{
+          background: "linear-gradient(135deg, #064e3b 0%, #059669 55%, #10b981 100%)",
+          color: "#fff",
+          borderRadius: "20px",
+        }}
+      >
+        <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
+          <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+            <Box component="img" src="/keto/logo.svg" alt="" sx={{ width: 28, height: 28 }} />
+            <Typography variant="subtitle1" fontWeight={800} letterSpacing={0.5}>
+              Keto<span style={{ color: "#6ee7b7" }}>Flow</span>
+            </Typography>
+          </Box>
+          <Typography variant="h5" fontWeight={800} lineHeight={1.25}>
+            Tu progreso comienza hoy.
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.92, mt: 0.5 }}>
+            Registra, aprende, comparte tus logros y sigue avanzando.
+          </Typography>
+          <Typography
+            variant="caption"
+            component="p"
+            sx={{ opacity: 0.8, mt: 1, fontStyle: "italic", display: "block" }}
+          >
+            "No se trata de hacerlo perfecto. Se trata de no dejar de avanzar."
+          </Typography>
+          <Box display="flex" gap={0.75} flexWrap="wrap" mt={1.5}>
+            {["Registra tu progreso", "Celebra tus logros", "Comparte el camino"].map((chip) => (
+              <Chip
+                key={chip}
+                label={chip}
+                size="small"
+                sx={{
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,.45)",
+                  fontSize: 11,
+                }}
+                variant="outlined"
+              />
+            ))}
+          </Box>
+        </CardContent>
+      </Card>
+
       {/* Saludo */}
       <Box display="flex" alignItems="center" gap={1.5} mb={0.5}>
         <Avatar src={userInfo.photoURL || undefined} sx={{ width: 44, height: 44, bgcolor: "primary.main" }}>

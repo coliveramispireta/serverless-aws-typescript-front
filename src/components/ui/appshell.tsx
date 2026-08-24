@@ -93,7 +93,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Image src="/keto/logo.svg" alt="KetoCoach" width={32} height={32} />
               <Typography variant="h6" fontWeight={800} letterSpacing={0.5}>
                 Keto
-                <Box component="span" sx={{ color: "primary.main" }}>Coach</Box>
+                <Box component="span" sx={{ color: "primary.main" }}>Flow</Box>
               </Typography>
             </Box>
           </Link>

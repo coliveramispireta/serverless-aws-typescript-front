@@ -7,6 +7,7 @@ import "dayjs/locale/es-mx";
 import MuiXLicense from "@/smartcomponents/muilicense/MuiXLicense";
 import { UserContextProvider } from "@/context/usercontext/usercontextprovider";
 import { PageContextProvider } from "@/context/pagecontext/pagecontextprovider";
+import PwaRegister from "@/components/ui/pwaregister";
 interface ClientProvidersProps {
   children: React.ReactNode;
 }
@@ -20,6 +21,7 @@ export default function ClientProviders({ children }: ClientProvidersProps) {
           <MuiXLicense />
         </UserContextProvider>
       </LocalizationProvider>
+      <PwaRegister />
     </ThemeProvider>
   );
 }
