@@ -12,7 +12,7 @@ axiosInstanceLambda.interceptors.request.use(
   (config) => {
     config.headers["Content-Type"] = "application/json";
     /**
-     * Prioridad: ID token de Cognito (endpoints KetoCoach, validados con
+     * Prioridad: ID token de Cognito (endpoints KetoFlow, validados con
      * User Pool Authorizer). Fallback al token estático para endpoints legacy.
      */
     const cognitoToken = getToken();

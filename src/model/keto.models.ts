@@ -1,5 +1,5 @@
 // ============================================================
-// Modelos de dominio — KetoCoach
+// Modelos de dominio — KetoFlow
 // Entidades de la app de apoyo al coach de dieta cetogénica.
 // ============================================================
 

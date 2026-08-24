@@ -17,7 +17,7 @@ export function getAutoMotivation(metrics: KetoMetrics): AutoContent {
     return {
       motivo: "bienvenida",
       texto:
-        "¡Bienvenido/a a KetoCoach! Registra tu primer peso y tus comidas para empezar a ver tu progreso.",
+        "¡Bienvenido/a a KetoFlow! Registra tu primer peso y tus comidas para empezar a ver tu progreso.",
     };
   }
 

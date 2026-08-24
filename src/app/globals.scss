@@ -1,7 +1,7 @@
 @import "src/styles/amthemevars.module.scss";
 
 // ============================================================
-// Estilos globales — KetoCoach (mobile-first)
+// Estilos globales — KetoFlow (mobile-first)
 // ============================================================
 
 :root {
@@ -25,6 +25,19 @@ body {
   background-color: $AMUltraLightGray__main;
   color: $AMBrandBlue__main;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+// Modo oscuro (controlado por ThemeModeProvider vía <html data-kf-theme="dark">)
+html[data-kf-theme="dark"] {
+  & body {
+    background-color: #0b1220;
+    color: #e2e8f0;
+  }
+
+  & ::selection {
+    background: rgba(52, 211, 153, 0.3);
+  }
 }
 
 a {

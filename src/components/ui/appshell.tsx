@@ -18,8 +18,10 @@ import {
 } from "@mui/material";
 import {
   Add,
+  DarkModeOutlined,
   Groups,
   Home,
+  LightModeOutlined,
   Logout,
   Person,
   Restaurant,
@@ -32,6 +34,7 @@ import { signOut } from "aws-amplify/auth";
 
 import { getUserInfo, cleanData } from "@/services/xstorage.cross.service";
 import { isCoachEmail } from "@/lib/auth/roles";
+import { useThemeMode } from "@/theme/thememode";
 
 const BOTTOM_NAV_ITEMS = [
   { label: "Inicio", href: "/inicio", icon: <Home /> },
@@ -50,6 +53,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const userInfo = getUserInfo();
+  const { mode, toggle: toggleTheme } = useThemeMode();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -90,7 +94,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Toolbar sx={{ justifyContent: "space-between", px: { xs: 2, sm: 3 } }}>
           <Link href="/inicio" style={{ textDecoration: "none", display: "flex" }}>
             <Box display="flex" alignItems="center" gap={1}>
-              <Image src="/keto/logo.svg" alt="KetoCoach" width={32} height={32} />
+              <Image src="/keto/logo.svg" alt="KetoFlow" width={32} height={32} />
               <Typography variant="h6" fontWeight={800} letterSpacing={0.5}>
                 Keto
                 <Box component="span" sx={{ color: "primary.main" }}>Flow</Box>
@@ -133,7 +137,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Typography>
             </Box>
             <Divider />
-            <MenuItem onClick={() => router.push("/perfil")} sx={{ mt: 0.5 }}>
+            {/* Alternar tema claro/oscuro (el menú permanece abierto) */}
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleTheme();
+              }}
+              sx={{ mt: 0.5 }}
+            >
+              <ListItemIcon>
+                {mode === "light" ? <DarkModeOutlined fontSize="small" /> : <LightModeOutlined fontSize="small" />}
+              </ListItemIcon>
+              {mode === "light" ? "Modo oscuro" : "Modo claro"}
+            </MenuItem>
+            <MenuItem onClick={() => router.push("/perfil")}>
               <ListItemIcon>
                 <Person fontSize="small" />
               </ListItemIcon>

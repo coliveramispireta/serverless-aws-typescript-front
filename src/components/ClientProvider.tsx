@@ -1,6 +1,7 @@
 "use client";
+import { useMemo } from "react";
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { theme } from "../app/theme";
+import { buildTheme } from "../app/theme";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import "dayjs/locale/es-mx";
@@ -8,10 +9,12 @@ import MuiXLicense from "@/smartcomponents/muilicense/MuiXLicense";
 import { UserContextProvider } from "@/context/usercontext/usercontextprovider";
 import { PageContextProvider } from "@/context/pagecontext/pagecontextprovider";
 import PwaRegister from "@/components/ui/pwaregister";
-interface ClientProvidersProps {
-  children: React.ReactNode;
-}
-export default function ClientProviders({ children }: ClientProvidersProps) {
+import { ThemeModeProvider, useThemeMode } from "@/theme/thememode";
+
+function ThemedApp({ children }: { children: React.ReactNode }) {
+  const { mode } = useThemeMode();
+  const theme = useMemo(() => buildTheme(mode), [mode]);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -21,7 +24,15 @@ export default function ClientProviders({ children }: ClientProvidersProps) {
           <MuiXLicense />
         </UserContextProvider>
       </LocalizationProvider>
-      <PwaRegister />
     </ThemeProvider>
+  );
+}
+
+export default function ClientProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeModeProvider>
+      <ThemedApp>{children}</ThemedApp>
+      <PwaRegister />
+    </ThemeModeProvider>
   );
 }

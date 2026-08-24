@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 
 import { loginWithEmail, loginWithGoogle } from "@/services/auth.service";
 import GoogleLoginButton from "../buttongoogle/buttongoogle";
+import InstallAppButton from "../ui/installappbutton";
 import { getUserInfo } from "@/services/xstorage.cross.service";
 import Link from "next/link";
 
@@ -273,6 +274,9 @@ export default function LoginPage() {
                 userAvatar={userInfo.photoURL}
               />
             </Box>
+
+            {/* Instalación PWA */}
+            <InstallAppButton />
           </Box>
         </form>
       </Paper>
