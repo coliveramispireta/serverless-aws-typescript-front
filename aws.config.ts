@@ -22,7 +22,7 @@ export const awsConfig = {
     scope: ["openid", "email", "profile"],
     redirectSignIn: safeUrl(REDIRECT_SIGNIN, FALLBACK_SIGNIN),
     redirectSignOut: safeUrl(REDIRECT_SIGNUP, FALLBACK_SIGNOUT),
-    responseType: "token",
+    responseType: "code",
   },
   aws_cognito_username_attributes: ["EMAIL"],
   aws_cognito_social_providers: ["GOOGLE"],

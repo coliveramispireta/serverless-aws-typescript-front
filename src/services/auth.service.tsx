@@ -13,8 +13,10 @@ import {
   signInWithRedirect,
   autoSignIn,
 } from "aws-amplify/auth";
+import { Amplify } from "aws-amplify";
+import { awsConfig } from "../../aws.config";
 
-import { setToken, setUserInfo } from "./xstorage.cross.service";
+import { cleanData, setToken, setUserInfo } from "./xstorage.cross.service";
 import { mapDatosUsuario } from "./utils.cross.services";
 
 export async function createUser(model: { email: string; password: string; displayName: string }) {
@@ -52,8 +54,11 @@ export async function createUser(model: { email: string; password: string; displ
 }
 
 export async function loginWithEmail(model: { email: string; password: string }) {
+  // ⚠️ NUNCA llamar signOut() aquí: con OAuth configurado REDIRIGE al logout de
+  // Cognito y cancelaba el login recién hecho (bug "login exitoso → vuelve al login").
+  // Limpieza local únicamente: la nueva sesión reemplaza a la anterior.
+  cleanData();
   try {
-    await signOut();
     console.log("model:", model);
     const user = await signIn({
       username: model.email,
@@ -72,32 +77,39 @@ export async function loginWithEmail(model: { email: string; password: string })
     setToken(idToken);
     setUserInfo(datosUsuario);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorName = String(error?.name ?? error?.__type ?? "");
+    const combined = `${errorName} ${errorMessage}`.toLowerCase();
 
-    if (errorMessage.includes("User does not exist")) {
-      throw new Error("El usuario no existe. Verifica tu correo.");
+    if (
+      errorName === "UserNotFoundException" ||
+      combined.includes("user does not exist") ||
+      combined.includes("usernotfound")
+    ) {
+      throw new Error("El usuario no existe. Verifica tu correo o crea una cuenta.");
     } else if (errorMessage.includes("Incorrect username or password")) {
       throw new Error("Credenciales incorrectas. Revisa tu usuario y contraseña.");
-    } else if (errorMessage.includes("User is not confirmed")) {
+    } else if (combined.includes("not confirmed")) {
       throw new Error("Tu correo no ha sido verificado. Revisa tu bandeja de entrada.");
-    } else if (
-      errorMessage.includes(
-        "InvalidParameterException: Cannot reset password for the user as there is no registered/verified email or phone_number"
-      )
-    ) {
-      throw new Error("Tu correo no ha sido verificado. Revisa tu bandeja de entrada.");
-    } else if (errorMessage.includes("Unauthenticated access is not supported")) {
+    } else if (combined.includes("unauthenticated access is not supported")) {
       throw new Error("Acceso no permitido. Asegúrate de estar registrado y verificado.");
     } else {
-      throw new Error(errorMessage);
+      // Siempre lanzar un Error estándar con mensaje legible (nunca crashear la UI)
+      throw new Error(errorMessage || "No se pudo iniciar sesión. Intenta de nuevo.");
     }
   }
 }
 
 export async function loginWithGoogle() {
+  // ⚠️ Mismo fix que loginWithEmail: sin signOut() previo (redirigía al logout de
+  // Cognito y cancelaba el flujo → "vuelve al login").
+  cleanData();
+
+  // Blindaje extra: garantizar config completa justo antes del redirect
+  Amplify.configure(awsConfig);
+
   try {
-    await signOut();
     await signInWithRedirect({ provider: "Google" });
     console.log("Inicio de sesión con google exitoso");
     return true;
@@ -105,17 +117,12 @@ export async function loginWithGoogle() {
     const message = String(error?.message || error);
 
     /**
-     * InvalidRedirectException: la config OAuth se perdió o llegó vacía
-     * (p.ej. una re-configuración parcial de Amplify). Auto-reparación:
-     * re-configurar con awsConfig completo y reintentar UNA vez.
+     * InvalidRedirectException: la config OAuth se perdió o llegó vacía.
+     * Auto-reparación: re-configurar con awsConfig completo y reintentar UNA vez.
      */
     if (message.includes("InvalidRedirect") || message.includes("redirect")) {
       console.warn("loginWithGoogle: reconfigurando Amplify y reintentando…");
       try {
-        const [{ Amplify }, { awsConfig }] = await Promise.all([
-          import("aws-amplify"),
-          import("../../aws.config"),
-        ]);
         Amplify.configure(awsConfig);
         await signInWithRedirect({ provider: "Google" });
         return true;

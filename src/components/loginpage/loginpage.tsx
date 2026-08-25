@@ -71,7 +71,8 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error) {
       setSuccess(false);
-      setError("Credenciales incorrectas");
+      // Mostrar el mensaje específico ("El usuario no existe", etc.)
+      setError(error instanceof Error ? error.message : "Credenciales incorrectas");
     }
   };
 
