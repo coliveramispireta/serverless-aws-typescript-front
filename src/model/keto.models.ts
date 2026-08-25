@@ -96,6 +96,7 @@ export interface Post {
   autorFotoUrl?: string;
   texto: string;
   imagenUrl?: string;
+  imagenKey?: string;
   logroId?: string; // si la publicación comparte un logro
   fechaCreacion: string;
   comentariosCount?: number;

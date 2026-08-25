@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import {
   ArrowBack,
+  Campaign,
   Forum,
   MenuBook,
   NotificationsActive,
@@ -26,10 +27,12 @@ import CoachRecomendacionesView from "@/features/coach/recomendacionesview";
 import CoachMensajesView from "@/features/coach/mensajesview";
 import CoachRecetasView from "@/features/coach/recetasview";
 import CoachActividadView from "@/features/coach/actividadview";
+import CoachFlyerView from "@/features/coach/flyerview";
 
 const TABS = [
   { label: "Usuarios", icon: <People />, element: <CoachUsuariosView /> },
   { label: "Revisión", icon: <Timeline />, element: <CoachRevisionView /> },
+  { label: "Publicar", icon: <Campaign />, element: <CoachFlyerView /> },
   { label: "Recomendaciones", icon: <Restaurant />, element: <CoachRecomendacionesView /> },
   { label: "Mensajes", icon: <Forum />, element: <CoachMensajesView /> },
   { label: "Recetas", icon: <MenuBook />, element: <CoachRecetasView /> },

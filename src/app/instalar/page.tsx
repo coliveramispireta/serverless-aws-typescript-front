@@ -16,7 +16,7 @@ import {
 import { AddToHomeScreen, ContentCopy, IosShare, MoreVert, Share } from "@mui/icons-material";
 
 import InstallAppButton from "@/components/ui/installappbutton";
-
+import PushPromptCard from "@/components/ui/pushpromptcard";
 /**
  * Página pública y compartible: /instalar
  * Enlace directo para que cualquier persona instale KetoFlow en su celular.
@@ -79,6 +79,9 @@ export default function InstalarPage() {
 
           <InstallAppButton showInstalledState />
         </Paper>
+
+        {/* Notificaciones: pedir permiso al abrir esta página */}
+        <PushPromptCard />
 
         {/* Instrucciones por plataforma */}
         <Typography variant="subtitle2" fontWeight={700} mb={1}>

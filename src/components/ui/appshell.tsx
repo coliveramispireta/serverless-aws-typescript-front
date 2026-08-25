@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AppBar,
   Avatar,
@@ -8,9 +8,11 @@ import {
   Fab,
   IconButton,
   ListItemIcon,
+  ListItemText,
   Menu,
   MenuItem,
   Paper,
+  Switch,
   Toolbar,
   Typography,
   BottomNavigation,
@@ -24,6 +26,7 @@ import {
   LightModeOutlined,
   Logout,
   MenuBook,
+  NotificationsActive,
   Person,
   Restaurant,
   School,
@@ -37,6 +40,7 @@ import { signOut } from "aws-amplify/auth";
 import { getUserInfo, cleanData } from "@/services/xstorage.cross.service";
 import { isCoachEmail } from "@/lib/auth/roles";
 import { useThemeMode } from "@/theme/thememode";
+import usePush from "@/hooks/usepush";
 
 const BOTTOM_NAV_ITEMS = [
   { label: "Inicio", href: "/inicio", icon: <Home /> },
@@ -56,8 +60,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const userInfo = getUserInfo();
   const { mode, toggle: toggleTheme } = useThemeMode();
+  const push = usePush();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
+
+  // Registrar suscripción push pendiente (hecha en /login o /instalar) tras iniciar sesión
+  useEffect(() => {
+    if (userInfo.isLogged) void push.flushPendingRegistration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInfo.isLogged]);
 
   // Valor activo del bottom nav según la ruta actual
   const activeIndex = BOTTOM_NAV_ITEMS.findIndex(
@@ -160,6 +171,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Typography>
             </Box>
             <Divider />
+            {/* Configuración › Notificaciones (switch directo) */}
+            {push.supported && (
+              <MenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (push.subscribed) void push.disable();
+                  else void push.enable();
+                }}
+                sx={{ mt: 0.5 }}
+              >
+                <ListItemIcon>
+                  <NotificationsActive fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Notificaciones"
+                  secondary={
+                    push.subscribed
+                      ? "Activadas"
+                      : push.permission === "denied"
+                        ? "Bloqueadas en el navegador"
+                        : "Desactivadas"
+                  }
+                />
+                <Switch edge="end" checked={push.subscribed} disableRipple />
+              </MenuItem>
+            )}
             {/* Alternar tema claro/oscuro (el menú permanece abierto) */}
             <MenuItem
               onClick={(e) => {

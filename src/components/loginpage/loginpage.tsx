@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { loginWithEmail, loginWithGoogle } from "@/services/auth.service";
 import GoogleLoginButton from "../buttongoogle/buttongoogle";
 import InstallAppButton from "../ui/installappbutton";
+import PushPromptCard from "@/components/ui/pushpromptcard";
 import { getUserInfo } from "@/services/xstorage.cross.service";
 import Link from "next/link";
 
@@ -130,6 +131,9 @@ export default function LoginPage() {
 
   return (
     <>
+      {/* Notificaciones: pedir permiso al abrir (queda pendiente hasta iniciar sesión) */}
+      <PushPromptCard />
+
       {/* Mensajes */}
       {sessionExpired && (
         <Alert severity="warning" sx={{ mb: 2, borderRadius: 3 }}>

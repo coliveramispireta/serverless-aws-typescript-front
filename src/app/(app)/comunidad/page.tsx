@@ -14,7 +14,7 @@ import {
   TextField as MuiTextField,
   Typography,
 } from "@mui/material";
-import { AddPhotoAlternate, ChatBubbleOutline, Send } from "@mui/icons-material";
+import { ChatBubbleOutline, Send } from "@mui/icons-material";
 
 import EmptyState from "@/components/ui/emptystate";
 import SectionHeader from "@/components/ui/sectionheader";
@@ -115,9 +115,6 @@ export default function ComunidadPage() {
             />
           </Box>
           <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
-            <IconButton size="small" color="primary" aria-label="adjuntar imagen">
-              <AddPhotoAlternate />
-            </IconButton>
             <Button
               variant="contained"
               endIcon={<Send />}

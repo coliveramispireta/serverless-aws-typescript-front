@@ -14,9 +14,25 @@ export const listPosts = async (): Promise<Post[]> => {
 export const createPost = async (data: {
   texto: string;
   imagenUrl?: string;
+  imagenKey?: string;
   logroId?: string;
 }): Promise<Post> => {
   const response = await axiosInstanceLambda.post("/posts", data);
+  return response.data;
+};
+
+/**
+ * Solicita URL prefirmada para subir la imagen de un flyer (coach).
+ * Devuelve uploadUrl (PUT) e imagenKey para crearPost.
+ */
+export const requestPostMediaUrl = async (
+  fileName: string,
+  contentType: string
+): Promise<{ uploadUrl: string; imagenKey: string }> => {
+  const response = await axiosInstanceLambda.post("/posts/media-url", {
+    fileName,
+    contentType,
+  });
   return response.data;
 };
 
