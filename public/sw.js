@@ -96,7 +96,10 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "/keto/logo.svg",
-      badge: "/keto/logo-maskable.svg",
+      // Badge = smallIcon de la barra de estado en Android.
+      // Debe ser silueta blanca con fondo transparente; si es opaco,
+      // Android muestra un cuadrado blanco.
+      badge: data.badge || "/keto/logo-badge.png",
       tag: data.tag || undefined,
       vibrate: [100, 50, 100],
       data: { url: data.url || "/inicio" },
