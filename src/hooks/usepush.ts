@@ -248,8 +248,14 @@ export default function usePush() {
         json = sub2.toJSON() as SubJSON;      }
 
       const ok = await postSubscription(json as SubJSON);
-      setState((s) => ({ ...s, subscribed: ok, busy: false }));
-      return ok;
+      if (!ok) {
+        // NO tocar subscribed: el dispositivo sigue suscrito localmente
+        setState((s) => ({ ...s, busy: false }));
+        return false;
+      }
+      window.localStorage.removeItem(PENDING_KEY);
+      setState((s) => ({ ...s, subscribed: true, busy: false }));
+      return true;
     } catch (err) {
       console.error("usePush test:", err);
       setState((s) => ({ ...s, busy: false }));
