@@ -96,20 +96,13 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "/keto/logo.svg",
-      tag: data.tag || undefined,
-
-      data: { url: data.url || "/inicio" },
       // Badge = smallIcon de la barra de estado en Android.
       // Debe ser silueta blanca con fondo transparente; si es opaco,
       // Android muestra un cuadrado blanco.
       badge: data.badge || "/keto/logo-badge.png",
-      // Intentar mantener la notificación visible
-      requireInteraction: true,
-      // Sonido/vibración
-      silent: false,
+      tag: data.tag || undefined,
       vibrate: [100, 50, 100],
-      // Si llega otra notificación, permitir nueva alerta
-      renotify: true,
+      data: { url: data.url || "/inicio" },
     })
   );
 });
