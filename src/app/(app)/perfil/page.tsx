@@ -38,6 +38,7 @@ export default function PerfilPage() {
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const coach = isCoachEmail(profile.email);
   const push = usePush();
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   // Cargar perfil desde el backend (si está disponible)
   useEffect(() => {
@@ -191,6 +192,32 @@ export default function PerfilPage() {
                 Los permisos están bloqueados en el navegador. Actívalos desde la configuración
                 del sitio (ícono 🔒 junto a la dirección).
               </Typography>
+            )}
+            {push.subscribed && (
+              <>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  disabled={push.busy}
+                  onClick={async () => {
+                    const ok = await push.test();
+                    setTestResult(
+                      ok
+                        ? "✅ Enviada — revisa tu celular (revisa también notificaciones silenciadas)"
+                        : "❌ No se pudo enviar. Revisa claves VAPID en SSM y consola del backend."
+                    );
+                  }}
+                  sx={{ mt: 2 }}
+                >
+                  🧪 Probar notificación
+                </Button>
+                {testResult && (
+                  <Typography variant="caption" display="block" textAlign="center" mt={1}>
+                    {testResult}
+                  </Typography>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

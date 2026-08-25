@@ -190,7 +190,7 @@ export default function InicioPage() {
         </Avatar>
         <Box>
           <Typography variant="h6" fontWeight={800} lineHeight={1.1}>
-            Hola, {userInfo.userName.split(" ")[0]} 👋
+            Hola, {userInfo.userName?.split(" ")[0] || "crack"} 👋
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Este es tu progreso keto

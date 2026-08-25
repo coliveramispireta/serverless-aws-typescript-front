@@ -219,8 +219,46 @@ export default function usePush() {
     }
   }, []);
 
+  /**
+   * 🧪 PRUEBA: reenvía la suscripción actual al backend → este responde
+   * reenviando el push de BIENVENIDA. Útil para verificar el pipeline
+   * (VAPID/SSM/SW) sin esperar a los crons.
+   */
+  const test = useCallback(async (): Promise<boolean> => {
+    setState((s) => ({ ...s, busy: true }));
+    try {
+      let json: SubJSON | null = null;
+      const reg = await getRegistration();
+      if (reg) {
+        const sub = await reg.pushManager.getSubscription().catch(() => null);
+        if (sub) json = sub.toJSON() as SubJSON;
+      }
+
+      if (!json) {
+        // No suscrito aún: hacer flujo completo primero
+        const okEnable = await enable();
+        if (!okEnable) {
+          setState((s) => ({ ...s, busy: false }));
+          return false;
+        }
+        const reg2 = await getRegistration();
+        if (!reg2) return false;
+        const sub2 = await reg2.pushManager.getSubscription().catch(() => null);
+        if (!sub2) return false;
+        json = sub2.toJSON() as SubJSON;      }
+
+      const ok = await postSubscription(json as SubJSON);
+      setState((s) => ({ ...s, subscribed: ok, busy: false }));
+      return ok;
+    } catch (err) {
+      console.error("usePush test:", err);
+      setState((s) => ({ ...s, busy: false }));
+      return false;
+    }
+  }, [enable, postSubscription]);
+
   return useMemo(
-    () => ({ ...state, enable, disable, subscribeGuest, flushPendingRegistration }),
-    [state, enable, disable, subscribeGuest, flushPendingRegistration]
+    () => ({ ...state, enable, disable, subscribeGuest, flushPendingRegistration, test }),
+    [state, enable, disable, subscribeGuest, flushPendingRegistration, test]
   );
 }

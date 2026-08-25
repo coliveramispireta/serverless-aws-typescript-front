@@ -41,6 +41,7 @@ import { getUserInfo, cleanData } from "@/services/xstorage.cross.service";
 import { isCoachEmail } from "@/lib/auth/roles";
 import { useThemeMode } from "@/theme/thememode";
 import usePush from "@/hooks/usepush";
+import ErrorBoundary from "@/components/ui/errorboundary";
 
 const BOTTOM_NAV_ITEMS = [
   { label: "Inicio", href: "/inicio", icon: <Home /> },
@@ -248,7 +249,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </AppBar>
 
       {/* ---------- Contenido ---------- */}
-      <main className="appMain">{children}</main>
+      <main className="appMain">
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </main>
 
       {/* ---------- Bottom navigation ---------- */}
       <Paper

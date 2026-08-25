@@ -43,6 +43,21 @@ export default function GlobalError({
             <br />
             Toca reintentar para continuar donde estabas.
           </p>
+          {error?.message ? (
+            <p
+              style={{
+                fontFamily: "monospace",
+                fontSize: 11,
+                color: "#ef4444",
+                background: "#fef2f2",
+                borderRadius: 8,
+                padding: "8px 10px",
+                wordBreak: "break-word",
+              }}
+            >
+              {error.message}
+            </p>
+          ) : null}
           <button
             onClick={reset}
             style={{
