@@ -7,7 +7,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import ReCAPTCHA from "react-google-recaptcha";
 import { AMFormControl, AMFormLabel, AMTextField, AMLinkButton } from "../styledcomponents";
-import { createUser } from "@/services/auth.service";
+import { createUser, verifySignupCode, resendVerificationCode } from "@/services/auth.service";
 
 const SITE_KEY = "6LfN7lUrAAAAAJbfWhc547oEXClBvE5aEW_TY6NW"; // remplaza con tu clave pública de reCAPTCHA
 
@@ -22,10 +22,39 @@ interface RegisterFormModel {
 export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  // ---- Paso 2: verificación por código ----
+  const [step, setStep] = useState<"form" | "verify">("form");
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [verifyPassword, setVerifyPassword] = useState("");
+  const [verifyError, setVerifyError] = useState("");
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
+  const [countdown, setCountdown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [recaptchaVerified, setRecaptchaVerified] = useState(false);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const router = useRouter();
+
+  // Entrada directa al paso de verificación (desde el login: /login/register?step=verify&email=…)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("step") === "verify") {
+      const email = params.get("email") ?? "";
+      if (email) {
+        setVerifyEmail(email);
+        setStep("verify");
+      }
+    }
+  }, []);
+
+  // Countdown para reenvío de código
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const {
     control,
@@ -68,10 +97,51 @@ export default function RegisterPage() {
         password: data.password,
         displayName: data.displayName,
       });
-      setSuccess(true);
-      router.push("/dashboard");
+      setError("");
+      // Paso 2: Cognito envió el código de verificación al correo
+      setVerifyEmail(data.email);
+      setVerifyPassword(data.password);
+      setStep("verify");
     } catch (err: any) {
       setError(err.message || "Error al registrar");
+    }
+  };
+
+  /** Paso 2: valida el código y entra a la app */
+  const handleVerify = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setVerifyError("");
+    setResendMsg("");
+
+    const password = verifyPassword || getValues("password") || "";
+    if (verifyCode.trim().length < 6) {
+      setVerifyError("Ingresa el código de 6 dígitos que enviamos a tu correo.");
+      return;
+    }
+    if (!password) {
+      setVerifyError("Ingresa tu contraseña para completar el acceso.");
+      return;
+    }
+
+    try {
+      setVerifyBusy(true);
+      await verifySignupCode({ email: verifyEmail, password, code: verifyCode.trim() });
+      router.push("/inicio");
+    } catch (err: any) {
+      setVerifyError(err?.message || "No se pudo verificar el código.");
+    } finally {
+      setVerifyBusy(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setResendMsg("");
+    try {
+      const msg = await resendVerificationCode(verifyEmail);
+      setResendMsg(msg);
+      setCountdown(60);
+    } catch (err: any) {
+      setResendMsg(err?.message || "No se pudo reenviar el código.");
     }
   };
 
@@ -246,8 +316,73 @@ export default function RegisterPage() {
           Crear cuenta
         </Typography>
 
+        {/* ================= PASO 2: VERIFICACIÓN POR CÓDIGO ================= */}
+        {step === "verify" && (
+          <Box
+            component="form"
+            onSubmit={handleVerify}
+            display="flex"
+            flexDirection="column"
+            gap={2}
+          >
+            <Alert severity="success">
+              Te enviamos un código de verificación a <strong>{verifyEmail}</strong>. Revisa también
+              tu carpeta de spam.
+            </Alert>
+            {verifyError && <Alert severity="error">{verifyError}</Alert>}
+            {resendMsg && <Alert severity="info">{resendMsg}</Alert>}
+
+            <AMFormControl fullWidth>
+              <AMFormLabel>Código de verificación (6 dígitos)</AMFormLabel>
+              <AMTextField
+                id="txt_codigo_verificacion"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputProps={{ inputMode: "numeric", maxLength: 6, style: { letterSpacing: 8, textAlign: "center" } }}
+                variant="outlined"
+                fullWidth
+              />
+            </AMFormControl>
+
+            <AMFormControl fullWidth>
+              <AMFormLabel>Contraseña</AMFormLabel>
+              <AMTextField
+                id="txt_contrasena_verificacion"
+                type={showPassword ? "text" : "password"}
+                value={verifyPassword}
+                onChange={(e) => setVerifyPassword(e.target.value)}
+                variant="outlined"
+                fullWidth
+                autoComplete="current-password"
+              />
+              <span className="error-message">
+                {verifyPassword ? "" : "Ingresa tu contraseña para completar el acceso"}
+              </span>
+            </AMFormControl>
+
+            <Button fullWidth type="submit" variant="contained" disabled={verifyBusy}>
+              {verifyBusy ? "Verificando…" : "Verificar mi cuenta"}
+            </Button>
+
+            <Button
+              variant="outlined"
+              disabled={countdown > 0}
+              onClick={() => void handleResendCode()}
+            >
+              {countdown > 0 ? `Reenviar código (${countdown}s)` : "Reenviar código"}
+            </Button>
+
+            <Divider sx={{ my: 3 }} />
+            <Button variant="text" onClick={() => setStep("form")}>
+              Corregir mis datos
+            </Button>
+          </Box>
+        )}
+
+        {/* ================= PASO 1: FORMULARIO DE REGISTRO ================= */}
+        {step === "form" && (
+        <>
         {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">Cuenta creada correctamente. Redirigiendo...</Alert>}
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <Box display="flex" flexDirection="column" gap={2}>
@@ -448,6 +583,8 @@ export default function RegisterPage() {
             </Button>
           </Box>
         </form>
+        </>
+        )}
       </Box>
     </Container>
   );

@@ -1,8 +1,12 @@
 "use client";
-import { handleGoogleCallback } from "@/services/auth.service";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
+/**
+ * Guard de sesión basado en storage.
+ * El callback de Google ya NO se procesa aquí: lo hace /dashboard
+ * (completeGoogleSignIn), porque el flujo OAuth es authorization-code (?code=…).
+ */
 export default function WithGuards({
   children,
   authGuards,
@@ -14,34 +18,11 @@ export default function WithGuards({
   const [canRender, setCanRender] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const result = authGuards();
-      const hash = window.location.hash;
-
-      if (!hash) {
-        console.log("no hay hash!");
-        if (!result) {
-          router.push("/login");
-        } else {
-          setCanRender(true);
-        }
-      } else {
-        console.log("si hay hash!");
-        // Manejar login con Google usando hash
-        const loginGoogle = await handleGoogleCallback(hash);
-        console.log("loginGoogle:", loginGoogle);
-
-        if (!loginGoogle) {
-          router.push("/login");
-        } else {
-          setCanRender(true);
-          // Limpiar el hash de la URL
-          window.history.replaceState(null, "", window.location.pathname);
-        }
-      }
-    };
-
-    checkAuth();
+    if (!authGuards()) {
+      router.push("/login");
+    } else {
+      setCanRender(true);
+    }
   }, [authGuards, router]);
 
   if (canRender === null) return null; // o un spinner

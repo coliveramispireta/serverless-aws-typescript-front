@@ -19,6 +19,97 @@ import { awsConfig } from "../../aws.config";
 import { cleanData, setToken, setUserInfo } from "./xstorage.cross.service";
 import { mapDatosUsuario } from "./utils.cross.services";
 
+// ============================================================
+// Errores de autenticación → mensajes claros en español
+// ============================================================
+
+/** Clave canónica del error (para que la UI pueda reaccionar) */
+export type AuthErrorCode =
+  | "USER_NOT_FOUND"
+  | "BAD_CREDENTIALS"
+  | "NOT_CONFIRMED"
+  | "CODE_MISMATCH"
+  | "CODE_EXPIRED"
+  | "TOO_MANY_ATTEMPTS"
+  | "EMAIL_EXISTS"
+  | "INVALID_PASSWORD"
+  | "INVALID_PARAMS"
+  | "RESET_REQUIRED"
+  | "NETWORK"
+  | "GENERIC";
+
+function detectAuthErrorCode(error: any): AuthErrorCode {
+  const name = String(error?.name ?? error?.__type ?? "");
+  const msg = String(error?.message ?? "");
+  const combined = `${name} ${msg}`.toLowerCase();
+
+  if (name === "UserNotFoundException" || combined.includes("user does not exist") || combined.includes("usernotfound"))
+    return "USER_NOT_FOUND";
+  if (combined.includes("not confirmed") || combined.includes("usernotconfirmed"))
+    return "NOT_CONFIRMED";
+  if (name === "CodeMismatchException" || combined.includes("code mismatch"))
+    return "CODE_MISMATCH";
+  if (name === "ExpiredCodeException" || combined.includes("expired code") || combined.includes("invalid code provided"))
+    return "CODE_EXPIRED";
+  if (name === "LimitExceededException" || combined.includes("attempt limit") || combined.includes("limit exceeded"))
+    return "TOO_MANY_ATTEMPTS";
+  if (combined.includes("too many requests"))
+    return "TOO_MANY_ATTEMPTS";
+  if (name === "UsernameExistsException" || combined.includes("user already exists"))
+    return "EMAIL_EXISTS";
+  if (name === "InvalidPasswordException" || combined.includes("invalid password"))
+    return "INVALID_PASSWORD";
+  if (name === "InvalidParameterException" || combined.includes("invalid parameter"))
+    return "INVALID_PARAMS";
+  if (combined.includes("password reset required"))
+    return "RESET_REQUIRED";
+  if (combined.includes("network") || combined.includes("failed to fetch") || combined.includes("timeout"))
+    return "NETWORK";
+  if (combined.includes("incorrect username") || combined.includes("incorrect password") || name === "NotAuthorizedException")
+    return "BAD_CREDENTIALS";
+  return "GENERIC";
+}
+
+const AUTH_ERROR_MESSAGES: Record<AuthErrorCode, string> = {
+  USER_NOT_FOUND: "El usuario no existe. Verifica tu correo o crea una cuenta.",
+  BAD_CREDENTIALS: "Credenciales incorrectas. Revisa tu correo y contraseña.",
+  NOT_CONFIRMED: "Tu correo aún no está verificado. Revisa el código que te enviamos.",
+  CODE_MISMATCH: "El código es incorrecto. Revísalo e intenta de nuevo.",
+  CODE_EXPIRED: "El código expiró o ya fue usado. Solicita uno nuevo.",
+  TOO_MANY_ATTEMPTS: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+  EMAIL_EXISTS: "El correo ya está registrado. Inicia sesión con tu contraseña.",
+  INVALID_PASSWORD: "La contraseña no cumple los requisitos (mínimo 8 caracteres, una mayúscula y un caracter especial).",
+  INVALID_PARAMS: "Datos inválidos. Revisa el correo, la contraseña y el código ingresado.",
+  RESET_REQUIRED: "Debes restablecer tu contraseña antes de continuar.",
+  NETWORK: "Problema de conexión. Verifica tu internet e inténtalo de nuevo.",
+  GENERIC: "Ocurrió un error inesperado. Intenta de nuevo.",
+};
+
+/** Traduce cualquier error de Cognito/Amplify a un mensaje claro en español */
+export function mapAuthError(error: unknown): string {
+  const key = detectAuthErrorCode(error);
+  const raw = String((error as any)?.message ?? "").trim();
+  // Mensaje del banco salvo que sea genérico y haya texto útil del SDK
+  if (key === "GENERIC" && raw && !raw.toLowerCase().includes("error")) return raw;
+  return AUTH_ERROR_MESSAGES[key];
+}
+
+/** Lanza un Error con mensaje en español y .code para que la UI reaccione */
+function throwMapped(error: unknown): never {
+  const e = new Error(mapAuthError(error)) as Error & { code?: AuthErrorCode };
+  e.code = detectAuthErrorCode(error);
+  throw e;
+}
+
+// ============================================================
+// Registro con verificación por código
+// ============================================================
+
+/**
+ * Paso 1 del registro: crea el usuario NO confirmado.
+ * Cognito envía el código de verificación al correo.
+ * El usuario debe validar con verifySignupCode() antes de iniciar sesión.
+ */
 export async function createUser(model: { email: string; password: string; displayName: string }) {
   try {
     console.log("model:", model);
@@ -32,24 +123,38 @@ export async function createUser(model: { email: string; password: string; displ
         },
       },
     });
+    console.log("Usuario creado (pendiente de verificación)");
+    return { needsVerification: true as const, email: model.email };
+  } catch (error) {
+    throwMapped(error);
+  }
+}
 
-    console.log("Usuario creado exitosamente");
+/** Reenvía el código de verificación al correo indicado */
+export async function resendVerificationCode(email: string): Promise<string> {
+  try {
+    await resendSignUpCode({ username: email });
+    return "Código reenviado. Revisa tu correo (y la carpeta de spam).";
+  } catch (error) {
+    throwMapped(error);
+  }
+}
 
-    const loginSuccess = await loginWithEmail({ email: model.email, password: model.password });
-    if (!loginSuccess) throw new Error("Error al iniciar sesión");
+/**
+ * Paso 2 del registro: valida el código y, si es correcto,
+ * inicia sesión automáticamente con las credenciales registradas.
+ */
+export async function verifySignupCode(model: { email: string; password: string; code: string }) {
+  try {
+    await confirmSignUp({
+      username: model.email,
+      confirmationCode: model.code,
+    });
+    console.log("Correo verificado ✔");
+    await loginWithEmail({ email: model.email, password: model.password });
     return true;
-  } catch (error: any) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    if (errorMessage.includes("User already exists")) {
-      throw new Error("El correo ya se encuentra registrado.");
-    } else if (errorMessage.includes("InvalidPasswordException")) {
-      throw new Error("La contraseña no cumple con los requisitos de seguridad.");
-    } else if (errorMessage.includes("InvalidParameterException")) {
-      throw new Error("Los datos ingresados no son válidos.");
-    } else {
-      throw new Error(errorMessage);
-    }
+  } catch (error) {
+    throwMapped(error);
   }
 }
 
@@ -78,26 +183,8 @@ export async function loginWithEmail(model: { email: string; password: string })
     setUserInfo(datosUsuario);
     return true;
   } catch (error: any) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorName = String(error?.name ?? error?.__type ?? "");
-    const combined = `${errorName} ${errorMessage}`.toLowerCase();
-
-    if (
-      errorName === "UserNotFoundException" ||
-      combined.includes("user does not exist") ||
-      combined.includes("usernotfound")
-    ) {
-      throw new Error("El usuario no existe. Verifica tu correo o crea una cuenta.");
-    } else if (errorMessage.includes("Incorrect username or password")) {
-      throw new Error("Credenciales incorrectas. Revisa tu usuario y contraseña.");
-    } else if (combined.includes("not confirmed")) {
-      throw new Error("Tu correo no ha sido verificado. Revisa tu bandeja de entrada.");
-    } else if (combined.includes("unauthenticated access is not supported")) {
-      throw new Error("Acceso no permitido. Asegúrate de estar registrado y verificado.");
-    } else {
-      // Siempre lanzar un Error estándar con mensaje legible (nunca crashear la UI)
-      throw new Error(errorMessage || "No se pudo iniciar sesión. Intenta de nuevo.");
-    }
+    // Mensaje claro en español + .code para que la UI reaccione (ej. reenviar código)
+    throwMapped(error);
   }
 }
 
@@ -137,34 +224,47 @@ export async function loginWithGoogle() {
   }
 }
 
-export async function handleGoogleCallback(hash: string) {
-  console.log("se obtuvo el hash:", hash);
+/**
+ * Completa el login con Google en /dashboard (redirectSignIn).
+ * Flujo authorization-code (responseType: "code"):
+ *  - Si Cognito/hosted UI devolvió un error (?error=access_denied…), se mapea
+ *    a una clave legible para que /login muestre el mensaje en español.
+ *  - Si viene ?code=, fetchAuthSession() hace el intercambio automáticamente,
+ *    se construye la sesión y se persiste en storage.
+ */
+export type GoogleSignInResult = { ok: boolean; errorKey?: string };
+
+export async function completeGoogleSignIn(): Promise<GoogleSignInResult> {
+  if (typeof window === "undefined") return { ok: false, errorKey: "GOOGLE_GENERIC" };
+  const params = new URLSearchParams(window.location.search);
+
+  // 1) Errores OAuth / triggers rechazados (ej. cuenta Google inexistente)
+  const oauthError = params.get("error");
+  if (oauthError) {
+    console.warn("OAuth error:", oauthError, "|", params.get("error_description"));
+    return {
+      ok: false,
+      errorKey: oauthError === "access_denied" ? "GOOGLE_NO_EXISTE" : "GOOGLE_GENERIC",
+    };
+  }
+
+  // 2) Flujo feliz: intercambiar ?code= por tokens y guardar sesión
   try {
-    const params = new URLSearchParams(hash.slice(1));
-    const accessToken = params.get("access_token") || undefined;
-    const idToken = params.get("id_token") || undefined;
-
-    if (!accessToken) throw new Error("No token found in the session");
-    if (!idToken) throw new Error("No token found in the session");
-
-    console.log("accessToken: ", accessToken);
-    console.log("idToken: ", idToken);
-
-    const decode = idToken.split(".")[1];
-    const payload = JSON.parse(atob(decode));
-
-    console.log("payload: ", payload);
-
-    const datosUsuario = mapDatosUsuario(payload);
-    console.log("datosUsuario:", datosUsuario);
-    console.log("idToken:", idToken);
-
-    setToken(idToken);
+    cleanData();
+    const session = await fetchAuthSession();
+    const idToken = session.tokens?.idToken;
+    if (!idToken) {
+      console.warn("completeGoogleSignIn: sin tokens tras fetchAuthSession");
+      return { ok: false, errorKey: "GOOGLE_GENERIC" };
+    }
+    const datosUsuario = mapDatosUsuario(idToken.payload);
+    setToken(idToken.toString());
     setUserInfo(datosUsuario);
-    return true;
-  } catch (error: any) {
-    console.error("Error procesando callback de Google:", error);
-    return false;
+    console.log("Login con Google completado:", datosUsuario.email);
+    return { ok: true };
+  } catch (error) {
+    console.error("completeGoogleSignIn:", error);
+    return { ok: false, errorKey: "GOOGLE_GENERIC" };
   }
 }
 

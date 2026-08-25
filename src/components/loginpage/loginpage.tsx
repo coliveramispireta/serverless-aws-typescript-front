@@ -16,7 +16,7 @@ import { Controller, useForm } from "react-hook-form";
 import { Email, Lock, Visibility, VisibilityOff } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 
-import { loginWithEmail, loginWithGoogle } from "@/services/auth.service";
+import { loginWithEmail, loginWithGoogle, resendVerificationCode } from "@/services/auth.service";
 import GoogleLoginButton from "../buttongoogle/buttongoogle";
 import InstallAppButton from "../ui/installappbutton";
 import PushPromptCard from "@/components/ui/pushpromptcard";
@@ -37,6 +37,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
+  // Errores del callback de Google (?googleError=…)
+  const [googleAlert, setGoogleAlert] = useState<{ msg: string; needRegister: boolean } | null>(null);
+  // Correo no verificado en login normal → ofrecer reenvío de código
+  const [notConfirmedEmail, setNotConfirmedEmail] = useState("");
+  const [resendInfo, setResendInfo] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [allowVisibilityToggle, setAllowVisibilityToggle] = useState(false);
@@ -48,9 +53,23 @@ export default function LoginPage() {
   const model = new LoginFormModel();
 
   // Redirect del interceptor al expirar la sesión (/login?expired=1)
+  // y errores del callback de Google (/login?googleError=…)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setSessionExpired(new URLSearchParams(window.location.search).get("expired") === "1");
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setSessionExpired(params.get("expired") === "1");
+
+    const googleError = params.get("googleError");
+    if (googleError === "GOOGLE_NO_EXISTE") {
+      setGoogleAlert({
+        msg: "Tu cuenta de Google aún no existe en KetoFlow. Primero crea tu cuenta con correo y contraseña.",
+        needRegister: true,
+      });
+    } else if (googleError) {
+      setGoogleAlert({
+        msg: "No se pudo completar el acceso con Google. Inténtalo de nuevo.",
+        needRegister: false,
+      });
     }
   }, []);
 
@@ -70,10 +89,23 @@ export default function LoginPage() {
       setSuccess(true);
       setError("");
       router.push("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       setSuccess(false);
-      // Mostrar el mensaje específico ("El usuario no existe", etc.)
+      // Mostrar el mensaje específico en español (mapAuthError)
       setError(error instanceof Error ? error.message : "Credenciales incorrectas");
+      // Correo sin verificar → ofrecer reenvío del código
+      setNotConfirmedEmail(error?.code === "NOT_CONFIRMED" ? username : "");
+      setResendInfo("");
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!notConfirmedEmail) return;
+    try {
+      const msg = await resendVerificationCode(notConfirmedEmail);
+      setResendInfo(msg);
+    } catch (error: any) {
+      setResendInfo(error?.message || "No se pudo reenviar el código.");
     }
   };
 
@@ -140,9 +172,42 @@ export default function LoginPage() {
           Tu sesión expiró. Inicia sesión de nuevo para continuar.
         </Alert>
       )}
+      {/* Errores del login con Google */}
+      {googleAlert && (
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 3 }}>
+          {googleAlert.msg}
+          {googleAlert.needRegister && (
+            <>
+              {" "}
+              <Link href="/login/register" style={{ fontWeight: 700 }}>
+                Crear cuenta
+              </Link>
+            </>
+          )}
+        </Alert>
+      )}
       {error && (
         <Alert severity="error" sx={{ mb: 2, borderRadius: 3 }}>
           {error}
+        </Alert>
+      )}
+      {notConfirmedEmail && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2, borderRadius: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void handleResendCode()}>
+              Reenviar código
+            </Button>
+          }
+        >
+          Tu correo aún no está verificado.
+          {resendInfo ? ` ${resendInfo}` : " Te enviamos un código al registrarte."} Luego verifica
+          tu cuenta desde{" "}
+          <Link href={`/login/register?step=verify&email=${encodeURIComponent(notConfirmedEmail)}`}>
+            Crear cuenta
+          </Link>
+          .
         </Alert>
       )}
       {success && (
