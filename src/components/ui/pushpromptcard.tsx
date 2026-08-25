@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -23,6 +23,16 @@ const ASK_FLAG = "kf-push-asked";
 export default function PushPromptCard() {
   const push = usePush();
   const askedOnce = useRef(false);
+  // Detección iOS solo en cliente (evita ReferenceError en prerender)
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    try {
+      setIsIOS(/iphone|ipad|ipod/i.test(window.navigator.userAgent));
+    } catch {
+      setIsIOS(false);
+    }
+  }, []);
 
   // Auto-pedido UNA sola vez al abrir la página (si aún no hay respuesta)
   useEffect(() => {
@@ -40,7 +50,6 @@ export default function PushPromptCard() {
 
   if (!push.supported) {
     // iOS Safari sin instalar: PushManager no existe → guía mínima
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     if (!isIOS) return null;
     return (
       <Card elevation={0} sx={{ mb: 2, borderRadius: 3, border: "1px solid", borderColor: "AMSnowGray.main" }}>
