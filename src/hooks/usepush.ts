@@ -176,6 +176,54 @@ export default function usePush() {
     }
   }, []);
 
+  /**
+   * 🚪 Logout: convierte la suscripción del dispositivo a modo "invitado".
+   *  - Deja de recibir los 8 momentos diarios.
+   *  - Pasa a recibir solo 2 mensajes al día tipo "vuelve pronto"
+   *    (cronGuestMoments).
+   * La suscripción local del navegador se conserva: al iniciar sesión otra
+   * cuenta, reassignOnLogin() la re-registra como activa sin pedir permiso.
+   */
+  const unassignOnLogout = useCallback(async (): Promise<void> => {
+    try {
+      const reg = await getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription().catch(() => null) : null;
+      if (!sub) return;
+      const json = sub.toJSON() as SubJSON;
+      if (!json.endpoint) return;
+      try {
+        await axiosInstanceLambda.post("/notifications/subscriptions/guest", {
+          endpoint: json.endpoint,
+        });
+      } catch {
+        /* aunque falle el marcado remoto, continuamos */
+      }
+      window.localStorage.removeItem(PENDING_KEY);
+      setState((s) => ({ ...s, subscribed: false, pendingRegister: false }));
+    } catch {
+      /* silencioso */
+    }
+  }, []);
+
+  /**
+   * 🔁 Login: si este dispositivo ya tenía suscripción local (de una sesión
+   * anterior), la registra bajo la cuenta recién ingresada — sin nuevo permiso.
+   */
+  const reassignOnLogin = useCallback(async (): Promise<void> => {
+    if (!getUserInfo().isLogged) return;
+    try {
+      const reg = await getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription().catch(() => null) : null;
+      if (!sub) return;
+      const json = sub.toJSON() as SubJSON;
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) return;
+      const ok = await postSubscription(json, false);
+      if (ok) setState((s) => ({ ...s, subscribed: true }));
+    } catch {
+      /* silencioso */
+    }
+  }, [postSubscription]);
+
   // Tras iniciar sesión, registrar la suscripción pendiente
   useEffect(() => {
     void flushPendingRegistration();
@@ -287,7 +335,27 @@ export default function usePush() {
   }, [enable, postSubscription]);
 
   return useMemo(
-    () => ({ ...state, enable, disable, subscribeGuest, flushPendingRegistration, pingSession, test }),
-    [state, enable, disable, subscribeGuest, flushPendingRegistration, pingSession, test]
+    () => ({
+      ...state,
+      enable,
+      disable,
+      subscribeGuest,
+      flushPendingRegistration,
+      pingSession,
+      unassignOnLogout,
+      reassignOnLogin,
+      test,
+    }),
+    [
+      state,
+      enable,
+      disable,
+      subscribeGuest,
+      flushPendingRegistration,
+      pingSession,
+      unassignOnLogout,
+      reassignOnLogin,
+      test,
+    ]
   );
 }

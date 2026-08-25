@@ -66,12 +66,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const menuOpen = Boolean(anchorEl);
 
   // Al iniciar sesión: registrar suscripción push pendiente (hecha en /login o
-  // /instalar → backend envía la BIENVENIDA) y avisar inicio de sesión
+  // /instalar → backend envía la BIENVENIDA), re-asignar el dispositivo si ya
+  // tenía suscripción local de una sesión anterior, y avisar inicio de sesión
   // (el backend saluda "bienvenido de vuelta" máx. 1 vez cada 24 h)
   useEffect(() => {
     if (!userInfo.isLogged) return;
     void (async () => {
       await push.flushPendingRegistration();
+      await push.reassignOnLogin();
       void push.pingSession();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,6 +90,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const handleMenuClose = () => setAnchorEl(null);
 
   const handleLogout = async () => {
+    // Des-asignar el dispositivo ANTES de limpiar la sesión: deja de recibir
+    // push de esta cuenta (la suscripción local se conserva para el próximo login)
+    try {
+      await push.unassignOnLogout();
+    } catch {
+      /* no bloquear el logout por esto */
+    }
     try {
       await signOut();
     } catch {
