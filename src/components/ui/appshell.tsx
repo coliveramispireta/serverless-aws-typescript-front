@@ -65,9 +65,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
-  // Registrar suscripción push pendiente (hecha en /login o /instalar) tras iniciar sesión
+  // Al iniciar sesión: registrar suscripción push pendiente (hecha en /login o
+  // /instalar → backend envía la BIENVENIDA) y avisar inicio de sesión
+  // (el backend saluda "bienvenido de vuelta" máx. 1 vez cada 24 h)
   useEffect(() => {
-    if (userInfo.isLogged) void push.flushPendingRegistration();
+    if (!userInfo.isLogged) return;
+    void (async () => {
+      await push.flushPendingRegistration();
+      void push.pingSession();
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo.isLogged]);
 

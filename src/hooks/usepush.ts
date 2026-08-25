@@ -121,13 +121,22 @@ export default function usePush() {
     return json;
   }, []);
 
-  const postSubscription = useCallback(async (json: SubJSON): Promise<boolean> => {
+  /**
+   * POST /notifications/subscriptions.
+   * esPrueba=true → el backend reenvía siempre la bienvenida
+   * (botón 🧪 del perfil) sin tocar el flag welcomeSentAt.
+   */
+  const postSubscription = useCallback(async (json: SubJSON, esPrueba = false): Promise<boolean> => {
     try {
-      await axiosInstanceLambda.post("/notifications/subscriptions", {
-        endpoint: json.endpoint,
-        keys: json.keys,
-        plataforma: typeof navigator !== "undefined" ? navigator.platform || undefined : undefined,
-      });
+      await axiosInstanceLambda.post(
+        "/notifications/subscriptions",
+        {
+          endpoint: json.endpoint,
+          keys: json.keys,
+          plataforma: typeof navigator !== "undefined" ? navigator.platform || undefined : undefined,
+          ...(esPrueba ? { motivo: "prueba" } : {}),
+        },
+      );
       return true;
     } catch (err) {
       console.error("postSubscription:", err);
@@ -142,7 +151,7 @@ export default function usePush() {
       const raw = window.localStorage.getItem(PENDING_KEY);
       if (!raw || !getUserInfo().isLogged) return;
       const json = JSON.parse(raw) as SubJSON;
-      const ok = await postSubscription(json);
+      const ok = await postSubscription(json, false);
       if (ok) {
         window.localStorage.removeItem(PENDING_KEY);
         setState((s) => ({ ...s, subscribed: true, pendingRegister: false }));
@@ -152,6 +161,20 @@ export default function usePush() {
       console.warn("flushPendingRegistration:", err);
     }
   }, [postSubscription]);
+
+  /**
+   * 💚 Avisa al backend que inició sesión (AppShell).
+   * El backend decide si enviar el saludo "bienvenido de vuelta"
+   * (máximo 1 cada 24 h). Silencioso y sin estado local.
+   */
+  const pingSession = useCallback(async (): Promise<void> => {
+    if (!getUserInfo().isLogged) return;
+    try {
+      await axiosInstanceLambda.post("/notifications/session-open", {});
+    } catch {
+      /* silencioso: es solo un saludo */
+    }
+  }, []);
 
   // Tras iniciar sesión, registrar la suscripción pendiente
   useEffect(() => {
@@ -167,7 +190,7 @@ export default function usePush() {
         setState((s) => ({ ...s, busy: false }));
         return false;
       }
-      const ok = await postSubscription(json);
+      const ok = await postSubscription(json, false);
       if (ok) window.localStorage.removeItem(PENDING_KEY);
       setState((s) => ({ ...s, permission: "granted", subscribed: ok, busy: false }));
       return ok;
@@ -247,7 +270,7 @@ export default function usePush() {
         if (!sub2) return false;
         json = sub2.toJSON() as SubJSON;      }
 
-      const ok = await postSubscription(json as SubJSON);
+      const ok = await postSubscription(json as SubJSON, true);
       if (!ok) {
         // NO tocar subscribed: el dispositivo sigue suscrito localmente
         setState((s) => ({ ...s, busy: false }));
@@ -264,7 +287,7 @@ export default function usePush() {
   }, [enable, postSubscription]);
 
   return useMemo(
-    () => ({ ...state, enable, disable, subscribeGuest, flushPendingRegistration, test }),
-    [state, enable, disable, subscribeGuest, flushPendingRegistration, test]
+    () => ({ ...state, enable, disable, subscribeGuest, flushPendingRegistration, pingSession, test }),
+    [state, enable, disable, subscribeGuest, flushPendingRegistration, pingSession, test]
   );
 }
