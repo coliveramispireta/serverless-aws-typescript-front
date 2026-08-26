@@ -193,6 +193,12 @@ export async function loginWithGoogle() {
   // Cognito y cancelaba el flujo → "vuelve al login").
   cleanData();
 
+  // Marca del intento: si el hosted UI falla SIN redirigir con ?error=…,
+  // /login puede mostrar feedback igualmente (ver useEffect de LoginPage).
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem("kf-google-attempt", String(Date.now()));
+  }
+
   // Blindaje extra: garantizar config completa justo antes del redirect
   Amplify.configure(awsConfig);
 
@@ -237,11 +243,13 @@ export type GoogleSignInResult = { ok: boolean; errorKey?: string };
 export async function completeGoogleSignIn(): Promise<GoogleSignInResult> {
   if (typeof window === "undefined") return { ok: false, errorKey: "GOOGLE_GENERIC" };
   const params = new URLSearchParams(window.location.search);
+  console.info("[google-callback]", window.location.href);
 
   // 1) Errores OAuth / triggers rechazados (ej. cuenta Google inexistente)
   const oauthError = params.get("error");
   if (oauthError) {
     console.warn("OAuth error:", oauthError, "|", params.get("error_description"));
+    sessionStorage.removeItem("kf-google-attempt");
     return {
       ok: false,
       errorKey: oauthError === "access_denied" ? "GOOGLE_NO_EXISTE" : "GOOGLE_GENERIC",
@@ -260,6 +268,7 @@ export async function completeGoogleSignIn(): Promise<GoogleSignInResult> {
     const datosUsuario = mapDatosUsuario(idToken.payload);
     setToken(idToken.toString());
     setUserInfo(datosUsuario);
+    sessionStorage.removeItem("kf-google-attempt");
     console.log("Login con Google completado:", datosUsuario.email);
     return { ok: true };
   } catch (error) {

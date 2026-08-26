@@ -65,11 +65,24 @@ export default function LoginPage() {
         msg: "Tu cuenta de Google aún no existe en KetoFlow. Primero crea tu cuenta con correo y contraseña.",
         needRegister: true,
       });
+      sessionStorage.removeItem("kf-google-attempt");
     } else if (googleError) {
       setGoogleAlert({
         msg: "No se pudo completar el acceso con Google. Inténtalo de nuevo.",
         needRegister: false,
       });
+      sessionStorage.removeItem("kf-google-attempt");
+    } else {
+      // Red de seguridad: el hosted UI falló SIN devolver ?error=… a /dashboard.
+      // Si hay una marca de intento reciente (<5 min), avisar igualmente.
+      const attempt = Number(sessionStorage.getItem("kf-google-attempt") ?? 0);
+      if (attempt && Date.now() - attempt < 5 * 60 * 1000) {
+        setGoogleAlert({
+          msg: "No se pudo completar el acceso con Google. Verifica que tu cuenta de KetoFlow exista; si no, créala primero con tu correo y contraseña.",
+          needRegister: true,
+        });
+      }
+      if (attempt) sessionStorage.removeItem("kf-google-attempt");
     }
   }, []);
 
@@ -93,8 +106,15 @@ export default function LoginPage() {
       setSuccess(false);
       // Mostrar el mensaje específico en español (mapAuthError)
       setError(error instanceof Error ? error.message : "Credenciales incorrectas");
-      // Correo sin verificar → ofrecer reenvío del código
-      setNotConfirmedEmail(error?.code === "NOT_CONFIRMED" ? username : "");
+
+      // Cuenta creada pero sin confirmar → llevar DIRECTO a ingresar el código
+      if (error?.code === "NOT_CONFIRMED") {
+        router.replace(
+          `/login/register?step=verify&email=${encodeURIComponent(username)}`
+        );
+        return;
+      }
+      setNotConfirmedEmail("");
       setResendInfo("");
     }
   };
