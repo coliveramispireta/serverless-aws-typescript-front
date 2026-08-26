@@ -18,6 +18,7 @@ import {
   People,
   Restaurant,
   Timeline,
+  UploadFile,
 } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +29,7 @@ import CoachMensajesView from "@/features/coach/mensajesview";
 import CoachRecetasView from "@/features/coach/recetasview";
 import CoachActividadView from "@/features/coach/actividadview";
 import CoachFlyerView from "@/features/coach/flyerview";
+import CoachImportView from "@/features/coach/importview";
 
 const TABS = [
   { label: "Usuarios", icon: <People />, element: <CoachUsuariosView /> },
@@ -37,6 +39,7 @@ const TABS = [
   { label: "Mensajes", icon: <Forum />, element: <CoachMensajesView /> },
   { label: "Recetas", icon: <MenuBook />, element: <CoachRecetasView /> },
   { label: "Actividad", icon: <NotificationsActive />, element: <CoachActividadView /> },
+  { label: "Importar", icon: <UploadFile />, element: <CoachImportView /> },
 ];
 
 /**

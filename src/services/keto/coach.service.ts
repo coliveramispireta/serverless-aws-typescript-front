@@ -50,3 +50,17 @@ export const deleteUser = async (
   const response = await axiosInstanceLambda.delete(`/coach/users/${userId}`);
   return response.data;
 };
+
+/** Importar datos retroactivos (pesos + comidas) en batch */
+export const bulkImportData = async (
+  userId: string,
+  weights: Array<{ fechaHora: string; pesoKg: number; nota?: string }>,
+  meals: Array<{ fechaHora: string; alimento: string; gramos: number; comida?: string; nota?: string }>,
+): Promise<{ imported: { weights: number; meals: number } }> => {
+  const response = await axiosInstanceLambda.post("/coach/bulk-import", {
+    userId,
+    weights,
+    meals,
+  });
+  return response.data;
+};
