@@ -22,6 +22,9 @@ jobs:
       NEXT_PUBLIC_REDIRECT_SIGNUP_DEV: ${{ secrets.REDIRECT_SIGNUP_DEV }}
       NEXT_PUBLIC_REDIRECT_SIGNUP_PROD: ${{ secrets.REDIRECT_SIGNUP_PROD }}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      NEXT_PUBLIC_COACH_EMAILS_LOCAL: ${{ secrets.COACH_EMAILS }}
+      NEXT_PUBLIC_COACH_EMAILS_DEV: ${{ secrets.COACH_EMAILS }}
+      NEXT_PUBLIC_COACH_EMAILS_PROD: ${{ secrets.COACH_EMAILS }}
     steps:
       - uses: actions/checkout@v4
 
