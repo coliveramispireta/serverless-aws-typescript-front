@@ -33,3 +33,20 @@ export const getUserProgress = async (userId: string): Promise<UserProgress> => 
   const response = await axiosInstanceLambda.get(`/coach/users/${userId}/progress`);
   return response.data;
 };
+
+/** Deshabilitar/Habilitar un usuario */
+export const toggleUserDisabled = async (
+  userId: string,
+  disabled: boolean,
+): Promise<{ userId: string; disabled: boolean }> => {
+  const response = await axiosInstanceLambda.patch(`/coach/users/${userId}/disabled`, { disabled });
+  return response.data;
+};
+
+/** Eliminar un usuario (acción irreversible) */
+export const deleteUser = async (
+  userId: string,
+): Promise<{ userId: string; deleted: boolean }> => {
+  const response = await axiosInstanceLambda.delete(`/coach/users/${userId}`);
+  return response.data;
+};

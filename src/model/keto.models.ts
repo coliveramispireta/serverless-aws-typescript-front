@@ -16,6 +16,7 @@ export interface UserProfile {
   pesoObjetivoKg?: number;
   fechaInicio?: string; // ISO date
   rol: "usuario" | "coach";
+  disabled?: boolean;
 }
 
 /** Registro de peso (báscula) con evidencia fotográfica opcional */
