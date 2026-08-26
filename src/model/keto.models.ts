@@ -123,3 +123,32 @@ export interface ChatMessage {
   texto: string;
   fechaEnvio: string;
 }
+
+// ─── Catálogo de alimentos ────────────────────────────────────
+
+export type FoodUnit = "g" | "und" | "ml";
+export type FoodCategory =
+  | "proteina"
+  | "verdura"
+  | "grasa"
+  | "lacteo"
+  | "fruto_seco"
+  | "semilla"
+  | "otro";
+
+export interface FoodItem {
+  foodId: string;
+  nombre: string;
+  unidad: FoodUnit;
+  equivalenciaGramos?: number;
+  categoria?: FoodCategory;
+}
+
+// ─── Líquidos ────────────────────────────────────────────────
+
+export interface LiquidEntry {
+  id: string;
+  userId: string;
+  fechaHora: string;
+  cantidadMl: number;
+}

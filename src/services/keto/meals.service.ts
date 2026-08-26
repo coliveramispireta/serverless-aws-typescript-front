@@ -21,3 +21,13 @@ export const createMeal = async (
 export const deleteMeal = async (mealId: string): Promise<void> => {
   await axiosInstanceLambda.delete(`/meals/${mealId}`);
 };
+
+/** Registrar un bloque de comida completo (múltiples alimentos a la vez) */
+export const createMealBlock = async (block: {
+  fechaHora: string;
+  comida?: string;
+  alimentos: Array<{ foodId: string; cantidad: number }>;
+}): Promise<{ imported: number }> => {
+  const response = await axiosInstanceLambda.post("/meals/block", block);
+  return response.data;
+};
