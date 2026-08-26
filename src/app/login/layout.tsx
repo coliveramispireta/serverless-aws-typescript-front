@@ -1,5 +1,7 @@
 "use client";
 import "@/app/globals.scss";
+import { ThemeProvider, CssBaseline } from "@mui/material";
+import { buildTheme } from "../theme";
 import PageContext from "@/context/pagecontext/pagecontext";
 import { DatosUsuarioState } from "@/context/usercontext/usercontext";
 import ErrorDialog from "@/smartcomponents/custom/errordialog/errordialog";
@@ -11,6 +13,12 @@ import { sysAuthGuard } from "../authguards";
 import WithGuardsLogin from "@/components/withauthguards/withauthguardslogin";
 import { UserContextProvider } from "@/context/usercontext/usercontextprovider";
 import NoSSRWrapper from "@/components/nossrwrapper/nossrwrapper";
+
+// El módulo de login SIEMPRE usa tema claro: sus estilos son claros fijos
+// (tarjeta blanca, inputs #edf2f9, autofill blanco) y se ve roto en dark.
+// CssBaseline anidado pinta el body claro aquí y se retira al entrar a la app
+// (el interior respeta el modo claro/oscuro elegido por el usuario).
+const loginLightTheme = buildTheme("light");
 
 // NOTA: Amplify.configure vive ahora en ClientProvider (global para toda la app).
 // La duplicación aquí causaba pérdida intermitente del config OAuth
@@ -35,7 +43,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const { successState, errorState, warningState, infoState, apiCallState } = pageContext!;
 
   return (
-    <>
+    <ThemeProvider theme={loginLightTheme}>
+      <CssBaseline />
       <NoSSRWrapper>
         <UserContextProvider>
           <WithGuardsLogin authGuards={sysAuthGuard}>{children}</WithGuardsLogin>
@@ -65,6 +74,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         open={infoState.pageDialog.value}
         onClose={infoState.handleCloseDialog}
       />
-    </>
+    </ThemeProvider>
   );
 }
