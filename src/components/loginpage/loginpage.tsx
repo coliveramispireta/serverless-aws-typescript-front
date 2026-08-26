@@ -29,6 +29,16 @@ export class LoginFormModel {
   password: string = "";
 }
 
+// Neutraliza el fondo celeste que Chrome pinta sobre los inputs autocompletados
+const AUTOFILL_SX = {
+  "& input:-webkit-autofill": {
+    WebkitBoxShadow: "0 0 0 1000px #ffffff inset",
+    WebkitTextFillColor: "#0d1a28",
+    caretColor: "#0d1a28",
+    transition: "background-color 99999s ease-in-out 0s",
+  },
+};
+
 /**
  * Login KetoFlow: mobile-first, tarjeta centrada con inputs grandes.
  * La lógica de autenticación no cambia (Cognito email/password + Google).
@@ -271,6 +281,7 @@ export default function LoginPage() {
                   autoComplete="email"
                   fullWidth
                   size="small"
+                  sx={AUTOFILL_SX}
                   error={!!errors.username}
                   helperText={errors.username?.message ?? " "}
                   InputProps={{
@@ -299,6 +310,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   fullWidth
                   size="small"
+                  sx={AUTOFILL_SX}
                   error={!!errors.password}
                   helperText={errors.password?.message ?? " "}
                   inputRef={inputRef}

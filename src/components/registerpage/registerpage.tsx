@@ -11,6 +11,16 @@ import { createUser, verifySignupCode, resendVerificationCode } from "@/services
 
 const SITE_KEY = "6LfN7lUrAAAAAJbfWhc547oEXClBvE5aEW_TY6NW"; // remplaza con tu clave pública de reCAPTCHA
 
+// Fondo de los inputs: tono gris-azulado suave para contrastar con la tarjeta blanca
+const FIELD_BG = "#edf2f9";
+const fieldSx = {
+  "& .MuiOutlinedInput-input": { backgroundColor: FIELD_BG },
+  "& .MuiOutlinedInput-input:-webkit-autofill": {
+    WebkitBoxShadow: `0 0 0 1000px ${FIELD_BG} inset`,
+    WebkitTextFillColor: "#0d1a28",
+  },
+};
+
 interface RegisterFormModel {
   displayName: string;
   email: string;
@@ -341,6 +351,7 @@ export default function RegisterPage() {
                 inputProps={{ inputMode: "numeric", maxLength: 6, style: { letterSpacing: 8, textAlign: "center" } }}
                 variant="outlined"
                 fullWidth
+                sx={fieldSx}
               />
             </AMFormControl>
 
@@ -353,6 +364,7 @@ export default function RegisterPage() {
                 onChange={(e) => setVerifyPassword(e.target.value)}
                 variant="outlined"
                 fullWidth
+                sx={fieldSx}
                 autoComplete="current-password"
               />
               <span className="error-message">
@@ -400,6 +412,7 @@ export default function RegisterPage() {
                       id="txt_username_registroform"
                       valuestatus={determinaValidez("displayName")}
                       color={"AMLightBlue"}
+                      sx={fieldSx}
                       {...field}
                       variant="outlined"
                     />
@@ -430,6 +443,7 @@ export default function RegisterPage() {
                       id="txt_email_registroform"
                       valuestatus={determinaValidez("email")}
                       color={"AMLightBlue"}
+                      sx={fieldSx}
                       {...field}
                       variant="outlined"
                     />
@@ -472,6 +486,7 @@ export default function RegisterPage() {
                         type={showPassword ? "text" : "password"}
                         valuestatus={determinaValidez("password")}
                         color="AMLightBlue"
+                        sx={fieldSx}
                         {...field}
                         variant="outlined"
                         tabIndex={2}
@@ -524,6 +539,7 @@ export default function RegisterPage() {
                         type={showPasswordTwo ? "text" : "password"}
                         valuestatus={determinaValidez("confirmPassword")}
                         color="AMLightBlue"
+                        sx={fieldSx}
                         {...field}
                         variant="outlined"
                         tabIndex={2}
