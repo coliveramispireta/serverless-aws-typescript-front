@@ -74,6 +74,80 @@ a {
   margin-top: 4px;
 }
 
+// ============================================================
+// Onboarding: animaciones (intro de bienvenida y tour de ayuda)
+// ============================================================
+
+@keyframes kf-fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kf-gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes kf-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+// Cursor intermitente del efecto de escritura
+.kf-cursor {
+  display: inline-block;
+  width: 3px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  animation: kf-blink 1s steps(1) infinite;
+}
+
+.kf-fade-up {
+  animation: kf-fadeUp 0.45s ease both;
+}
+.kf-delay-1 {
+  animation-delay: 0.15s;
+}
+.kf-delay-2 {
+  animation-delay: 0.3s;
+}
+.kf-delay-3 {
+  animation-delay: 0.45s;
+}
+
+// Fondo animado del overlay de bienvenida (claro y oscuro)
+.kf-intro-bg {
+  background: linear-gradient(160deg, #ecfdf5 0%, #e0f2fe 45%, #f5f3ff 100%);
+  background-size: 220% 220%;
+  animation: kf-gradientShift 16s ease infinite;
+}
+html[data-kf-theme="dark"] .kf-intro-bg {
+  background: linear-gradient(160deg, #052e2b 0%, #0b1220 50%, #1e1b4b 100%);
+  background-size: 220% 220%;
+  animation: kf-gradientShift 16s ease infinite;
+}
+
 /* Tipografías */
 h1 {
   font-size: 24px;

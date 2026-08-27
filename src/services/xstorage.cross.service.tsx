@@ -83,6 +83,31 @@ export function getGlobalFirstLoad(): boolean {
   return (window.localStorage.getItem(FIRST_LOAD) as string) == "true";
 }
 
+/**
+ * Marca local de "onboarding visto" (scoped por usuario, no por navegador).
+ * Fast-path offline; el source of truth es el perfil del usuario (backend).
+ */
+function onboardingKey(): string {
+  const userInfo = getUserInfo();
+  const scope = userInfo.id || userInfo.email || "anon";
+  return `kf-onboarding-done:${scope}`;
+}
+
+export function setOnboardingDone(done: boolean): void {
+  if (typeof window !== "undefined") {
+    const key = onboardingKey();
+    window.localStorage.removeItem(key);
+    window.localStorage.setItem(key, done.toString());
+  }
+}
+
+export function getOnboardingDone(): boolean {
+  if (typeof window !== "undefined") {
+    return window.localStorage.getItem(onboardingKey()) === "true";
+  }
+  return false;
+}
+
 export function setToken(token: any): void {
   window.localStorage.removeItem(USER_TOKEN);
   window.localStorage.setItem(USER_TOKEN, token);

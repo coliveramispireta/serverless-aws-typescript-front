@@ -12,7 +12,9 @@ export const getProfile = async (): Promise<UserProfile> => {
 };
 
 export const updateProfile = async (
-  data: Partial<Pick<UserProfile, "alturaCm" | "pesoObjetivoKg" | "nombre">>
+  data: Partial<
+    Pick<UserProfile, "alturaCm" | "pesoObjetivoKg" | "nombre"> & { onboardingDone?: boolean }
+  >
 ): Promise<UserProfile> => {
   const response = await axiosInstanceLambda.put("/profile", data);
   return response.data;

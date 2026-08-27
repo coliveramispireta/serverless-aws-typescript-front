@@ -17,6 +17,8 @@ export interface UserProfile {
   fechaInicio?: string; // ISO date
   rol: "usuario" | "coach";
   disabled?: boolean;
+  /** true cuando el usuario completó (u omitió) el onboarding de bienvenida */
+  onboardingDone?: boolean;
 }
 
 /** Registro de peso (báscula) con evidencia fotográfica opcional */

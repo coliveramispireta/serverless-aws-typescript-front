@@ -20,7 +20,9 @@ import {
 } from "@mui/material";
 import {
   Add,
+  AutoAwesome,
   DarkModeOutlined,
+  Explore,
   Groups,
   Home,
   LightModeOutlined,
@@ -40,6 +42,7 @@ import { signOut } from "aws-amplify/auth";
 import { getUserInfo, cleanData } from "@/services/xstorage.cross.service";
 import { isCoachEmail } from "@/lib/auth/roles";
 import { useThemeMode } from "@/theme/thememode";
+import { useOnboarding } from "@/context/onboarding/onboarding.context";
 import usePush from "@/hooks/usepush";
 import ErrorBoundary from "@/components/ui/errorboundary";
 
@@ -61,6 +64,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const userInfo = getUserInfo();
   const { mode, toggle: toggleTheme } = useThemeMode();
+  const onboarding = useOnboarding();
   const push = usePush();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -158,7 +162,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <School />
               </IconButton>
             )}
-            <IconButton onClick={handleMenuClick} size="small">
+            <IconButton onClick={handleMenuClick} size="small" data-tour="appbar-menu">
               <Avatar
                 src={userInfo.photoURL || undefined}
                 alt={userInfo.userName}
@@ -232,6 +236,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </ListItemIcon>
               Bases de keto
             </MenuItem>
+            <MenuItem onClick={() => onboarding.openIntro()}>
+              <ListItemIcon>
+                <AutoAwesome fontSize="small" />
+              </ListItemIcon>
+              Ver Introducción
+            </MenuItem>
+            <MenuItem onClick={() => onboarding.openTour()}>
+              <ListItemIcon>
+                <Explore fontSize="small" />
+              </ListItemIcon>
+              Ver recorrido de ayuda
+            </MenuItem>
             <MenuItem onClick={handleShareApp}>
               <ListItemIcon>
                 <Share fontSize="small" />
@@ -289,6 +305,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <BottomNavigationAction
                 key="center"
                 label=""
+                data-tour="nav-peso"
                 icon={
                   <Fab
                     color="primary"
@@ -313,6 +330,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 label={item.label}
                 icon={item.icon}
+                data-tour={`nav-${item.href.replace("/", "")}`}
                 component={Link}
                 href={item.href}
                 disableRipple
