@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import { ArrowForward, PlayCircleOutline } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
-import { INTRO_SLIDES, KETOSIS_VIDEO_URL } from "@/content/welcome";
+import { INTRO_SLIDES, KETOSIS_POSTER_URL, KETOSIS_VIDEO_URL } from "@/content/welcome";
 import { getUserInfo } from "@/services/xstorage.cross.service";
 import { useOnboarding } from "@/context/onboarding/onboarding.context";
 
@@ -242,17 +242,21 @@ export default function OnboardingIntro() {
                 bgcolor: "background.paper",
               }}
             >
-              <iframe
+              <video
                 src={KETOSIS_VIDEO_URL}
+                poster={KETOSIS_POSTER_URL}
                 title="Cetosis explicada"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
+                controls
+                playsInline
+                preload="metadata"
                 style={{
                   position: "absolute",
                   inset: 0,
                   width: "100%",
                   height: "100%",
                   border: 0,
+                  background: "#000",
+                  objectFit: "contain",
                 }}
               />
             </Box>

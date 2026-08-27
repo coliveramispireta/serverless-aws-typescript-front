@@ -35,11 +35,14 @@ export interface IntroSlide {
 }
 
 /**
- * Video explicativo de cetosis (embed de YouTube).
- * TODO(producto): reemplazar la ID por el video en español aprobado por el coach.
+ * Video explicativo de cetosis (MP4 autohospedado en public/videos).
+ * Ruta relativa al sitio estático exportado; se sirve desde el mismo CloudFront.
  * Si se deja vacío, el slide muestra una tarjeta "próximamente".
  */
-export const KETOSIS_VIDEO_URL = "https://youtu.be/jSLw90pDqYk?si=m3zMIIwi9030px0n";
+export const KETOSIS_VIDEO_URL = "/videos/cetosis.mp4";
+
+/** Imagen de portada del video (fotograma/slide). Se muestra antes de reproducir. */
+export const KETOSIS_POSTER_URL = "/videos/poster.jpeg";
 
 export const INTRO_SLIDES: IntroSlide[] = [
   {
