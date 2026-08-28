@@ -22,6 +22,7 @@ import SectionHeader from "@/components/ui/sectionheader";
 import usePush from "@/hooks/usepush";
 import { buildLocalUserProfile, getProfilePrefs, saveProfilePrefs, ProfilePrefs } from "@/lib/profileprefs";
 import { isCoachEmail } from "@/lib/auth/roles";
+import { normalizeAlturaCm } from "@/lib/engine/metrics";
 import { getProfile, updateProfile } from "@/services/keto/profile.service";
 import { cleanData } from "@/services/xstorage.cross.service";
 
@@ -62,15 +63,27 @@ export default function PerfilPage() {
   };
 
   const handleSave = async () => {
+    // Normaliza la altura (admite cm o metros: 1.70 → 170) antes de guardar
+    const alturaCm = normalizeAlturaCm(prefs.alturaCm);
+    const converted =
+      prefs.alturaCm != null && alturaCm != null && prefs.alturaCm !== alturaCm;
+    const next: ProfilePrefs = { ...prefs, alturaCm };
+    setPrefs(next);
     // Respaldo local inmediato
-    saveProfilePrefs(prefs);
+    saveProfilePrefs(next);
     try {
-      await updateProfile({ alturaCm: prefs.alturaCm, pesoObjetivoKg: prefs.pesoObjetivoKg });
+      await updateProfile({ alturaCm, pesoObjetivoKg: prefs.pesoObjetivoKg });
       setSaved(true);
-      setSaveNote(null);
+      setSaveNote(
+        converted ? "Guardado. Convertimos tu altura a centímetros (ej. 170)." : null
+      );
     } catch {
       setSaved(true);
-      setSaveNote("Guardado localmente (el servicio aún no responde).");
+      setSaveNote(
+        converted
+          ? "Convertimos tu altura a cm y guardamos localmente (el servicio aún no responde)."
+          : "Guardado localmente (el servicio aún no responde)."
+      );
     }
   };
 
@@ -131,7 +144,8 @@ export default function PerfilPage() {
                 label="Altura (cm)"
                 type="number"
                 fullWidth
-                inputProps={{ min: 100, max: 230 }}
+                inputProps={{ min: 100, max: 230, step: 1 }}
+                helperText="En centímetros (ej. 170), no metros"
                 value={prefs.alturaCm ?? ""}
                 onChange={(e) => handleChange("alturaCm", e.target.value)}
               />

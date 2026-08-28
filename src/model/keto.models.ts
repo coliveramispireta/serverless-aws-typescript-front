@@ -40,6 +40,7 @@ export interface MealEntry {
   fechaHora: string; // ISO datetime
   comida?: "desayuno" | "almuerzo" | "cena" | "snack";
   carbohidratosNetos?: number; // por porción registrada (opcional)
+  categoria?: FoodCategory;
   nota?: string;
 }
 

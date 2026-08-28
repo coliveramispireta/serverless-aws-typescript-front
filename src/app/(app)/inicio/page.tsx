@@ -25,9 +25,21 @@ import EmptyState from "@/components/ui/emptystate";
 import SourceBadge from "@/components/ui/sourcebadge";
 import StatCard from "@/components/ui/statcard";
 import WeightChart from "@/components/ui/weightchart";
+import {
+  HydrationChart,
+  MetricsCarousel,
+  MetricHelp,
+  NutritionChart,
+} from "@/components/ui/metricscharts";
 import useUserData from "@/hooks/useuserdata";
 import usePush from "@/hooks/usepush";
-import { computeMetrics, buildWeightSeries } from "@/lib/engine/metrics";
+import {
+  computeHydrationStats,
+  computeMetrics,
+  computeNutritionStats,
+  normalizeAlturaCm,
+  buildWeightSeries,
+} from "@/lib/engine/metrics";
 import { getAutoMotivation, getAutoRecommendation } from "@/lib/engine/motivation";
 import { evaluateAchievements } from "@/lib/engine/achievements";
 import { buildLocalUserProfile, getProfilePrefs } from "@/lib/profileprefs";
@@ -42,7 +54,7 @@ import { getUserInfo } from "@/services/xstorage.cross.service";
 export default function InicioPage() {
   const userInfo = getUserInfo();
   const prefs = getProfilePrefs();
-  const { weights, meals, loading, error, reload } = useUserData();
+  const { weights, meals, liquids, loading, error, reload } = useUserData();
   const push = usePush();
 
   const [pushMsg, setPushMsg] = useState<string | null>(null);
@@ -54,7 +66,28 @@ export default function InicioPage() {
   );
   const motivation = getAutoMotivation(metrics);
   const recommendation = getAutoRecommendation(metrics);
+  const nutritionStats = useMemo(() => computeNutritionStats(meals), [meals]);
+  const hydration = useMemo(
+    () => computeHydrationStats(liquids, metrics.pesoActual, prefs.alturaCm),
+    [liquids, metrics.pesoActual, prefs.alturaCm]
+  );
   const achievements = useMemo(() => evaluateAchievements(weights, meals, prefs), [weights, meals, prefs]);
+
+  // Textos de ayuda (tooltip) para explicar cada métrica
+  const helpPeso =
+    "Tu último peso registrado en la báscula. El gráfico traza tu evolución y tu meta (línea punteada).";
+  const helpPerdida =
+    "Diferencia entre tu primer y tu último peso. El % se calcula sobre tu peso inicial.";
+  const helpRacha =
+    "Días consecutivos con al menos un registro (peso o comida), contando hacia atrás desde hoy.";
+  const helpIMC =
+    "Índice de Masa Corporal = peso (kg) ÷ altura² (m). No es un porcentaje: <18.5 bajo, 18.5–24.9 normal, 25–29.9 sobrepeso, ≥30 obesidad. Edita tu altura en Perfil (en cm, ej. 170).";
+  const helpPesoChart =
+    "Evolución de tu peso registrado. La línea punteada es tu meta. Registra peso desde la pestaña Peso o el botón de abajo.";
+  const helpAlimChart =
+    "Heurística según tus registros de comida: ~12–14 h sin comer sostiene cetosis 🔥; ≥16 h activa autofagia 🌀. Los 🔴 marcan alimentos no KETO que pueden sacarte de cetosis. Es orientativo, no médico.";
+  const helpHidraChart =
+    "Objetivo diario de agua = promedio entre 35 ml × tu peso y (talla cm − 100) × 30. Cumplir ≥80% ayuda a mantener cetosis y evitar retención. Regístralo en 💧.";
 
   if (loading) {
     return (
@@ -219,6 +252,7 @@ export default function InicioPage() {
             label="Peso actual"
             value={metrics.pesoActual != null ? `${metrics.pesoActual} kg` : "—"}
             hint={metrics.fechaUltimoRegistro ? new Date(metrics.fechaUltimoRegistro).toLocaleDateString("es-MX") : "sin registros"}
+            help={helpPeso}
           />
         </Grid>
         <Grid item xs={6} sm={3}>
@@ -234,6 +268,7 @@ export default function InicioPage() {
                   : "—"
             }
             hint={metrics.perdidaPorcentaje ? `${metrics.perdidaPorcentaje}% desde el inicio` : undefined}
+            help={helpPerdida}
           />
         </Grid>
         <Grid item xs={6} sm={3}>
@@ -243,6 +278,7 @@ export default function InicioPage() {
             accentColor="#f97316"
             value={`${metrics.rachaDias} ${metrics.rachaDias === 1 ? "día" : "días"}`}
             hint="registrando seguido"
+            help={helpRacha}
           />
         </Grid>
         <Grid item xs={6} sm={3}>
@@ -251,7 +287,12 @@ export default function InicioPage() {
             label="IMC"
             accentColor="#8b5cf6"
             value={metrics.imc != null ? String(metrics.imc) : "—"}
-            hint={prefs.alturaCm ? `altura ${prefs.alturaCm} cm` : "configura tu altura"}
+            hint={
+              normalizeAlturaCm(prefs.alturaCm)
+                ? `altura ${normalizeAlturaCm(prefs.alturaCm)} cm`
+                : "configura tu altura"
+            }
+            help={helpIMC}
           />
         </Grid>
       </Grid>
@@ -274,20 +315,65 @@ export default function InicioPage() {
         </Card>
       )}
 
-      {/* Evolución de peso */}
-      <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
-        <CardContent sx={{ p: 2 }}>
-          <Typography variant="subtitle2" fontWeight={700} mb={1}>
-            Evolución de peso
-          </Typography>
-          <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} />
-          <Box textAlign="center" mt={1}>
-            <Button component={Link} href="/peso" size="small">
-              Registrar peso
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
+      {/* Métricas en carrusel: peso / alimentación / hidratación */}
+      <MetricsCarousel
+        tabs={[
+          {
+            id: "peso",
+            label: "Peso",
+            content: (
+              <Box>
+                <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Evolución de peso
+                  </Typography>
+                  <MetricHelp>{helpPesoChart}</MetricHelp>
+                </Box>
+                <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} />
+                <Box textAlign="center" mt={1}>
+                  <Button component={Link} href="/peso" size="small">
+                    Registrar peso
+                  </Button>
+                </Box>
+              </Box>
+            ),
+          },
+          {
+            id: "alimentacion",
+            label: "Alimentación",
+            content: (
+              <Box>
+                <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Ayunos y cetosis
+                  </Typography>
+                  <MetricHelp>{helpAlimChart}</MetricHelp>
+                </Box>
+                <NutritionChart stats={nutritionStats} />
+              </Box>
+            ),
+          },
+          {
+            id: "hidratacion",
+            label: "Hidratación",
+            content: (
+              <Box>
+                <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Cumplimiento de agua
+                  </Typography>
+                  <MetricHelp>{helpHidraChart}</MetricHelp>
+                </Box>
+                <HydrationChart
+                  days={hydration.days}
+                  objetivoMl={hydration.objetivoMl}
+                  cumplimiento7d={hydration.cumplimiento7d}
+                />
+              </Box>
+            ),
+          },
+        ]}
+      />
 
       {/* Acceso a Bases de Keto */}
       <Card
