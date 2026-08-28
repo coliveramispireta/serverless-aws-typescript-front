@@ -93,6 +93,17 @@ export default function AlimentacionPage() {
     }
   }, [openMeal, foodsLoaded]);
 
+  // Catálogo ordenado: keto primero (alfabético) y "no KETO" al final
+  const sortedFoods = useMemo(() => {
+    const keto: FoodItem[] = [];
+    const nonKeto: FoodItem[] = [];
+    for (const f of foods) {
+      (f.categoria === "no_keto" ? nonKeto : keto).push(f);
+    }
+    const byName = (a: FoodItem, b: FoodItem) => a.nombre.localeCompare(b.nombre, "es");
+    return [...keto.sort(byName), ...nonKeto.sort(byName)];
+  }, [foods]);
+
   // Cargar líquidos al cambiar a pestaña 1
   const loadLiquids = useCallback(() => {
     if (tab !== 1) return;
@@ -429,6 +440,7 @@ export default function AlimentacionPage() {
                         <Typography fontWeight={700}>{l.cantidadMl} ml</Typography>
                         <Typography variant="caption" color="text.secondary">
                           {dayjs(l.fechaHora).format("HH:mm")}
+                          {l.nota ? ` · ${l.nota}` : ""}
                         </Typography>
                       </Box>
                       <IconButton
@@ -487,13 +499,29 @@ export default function AlimentacionPage() {
             {alimentos.map((item, index) => (
               <Box key={index} display="flex" gap={1} alignItems="center" mb={1}>
                 <Autocomplete
-                  options={foods}
+                  options={sortedFoods}
                   getOptionLabel={(o) => o.nombre}
                   isOptionEqualToValue={(o, v) => o.foodId === v.foodId}
                   value={foods.find((f) => f.foodId === item.foodId) ?? null}
                   onChange={(_, newValue) => updateAlimento(index, newValue)}
                   size="small"
                   sx={{ flex: 2 }}
+                  renderOption={(props, option) => (
+                    <li {...props} key={option.foodId}>
+                      {option.nombre}
+                      {option.categoria === "no_keto" && (
+                        <Typography
+                          component="span"
+                          variant="caption"
+                          color="error"
+                          fontWeight={700}
+                          sx={{ ml: 1 }}
+                        >
+                          (no KETO)
+                        </Typography>
+                      )}
+                    </li>
+                  )}
                   renderInput={(params) => (
                     <MuiTextField {...params} placeholder="Buscar alimento..." />
                   )}

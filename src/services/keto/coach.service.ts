@@ -1,5 +1,5 @@
 import { axiosInstanceLambda } from "@/interceptors/interceptors";
-import { UserProfile, WeightEntry, MealEntry, Achievement, Post } from "@/model/keto.models";
+import { UserProfile, WeightEntry, MealEntry, Achievement, Post, LiquidEntry } from "@/model/keto.models";
 
 /**
  * Contrato de los servicios exclusivos del Coach.
@@ -18,6 +18,7 @@ export interface UserProgress {
   usuario: UserProfile;
   pesos: WeightEntry[];
   comidas: MealEntry[];
+  liquidos: LiquidEntry[];
   logros: Achievement[];
   publicaciones: Post[];
 }
@@ -51,16 +52,18 @@ export const deleteUser = async (
   return response.data;
 };
 
-/** Importar datos retroactivos (pesos + comidas) en batch */
+/** Importar datos retroactivos (pesos + comidas + líquidos) en batch */
 export const bulkImportData = async (
   userId: string,
   weights: Array<{ fechaHora: string; pesoKg: number; nota?: string }>,
   meals: Array<{ fechaHora: string; alimento: string; gramos: number; comida?: string; nota?: string }>,
-): Promise<{ imported: { weights: number; meals: number } }> => {
+  liquids: Array<{ fechaHora: string; cantidadMl: number; nota?: string }> = [],
+): Promise<{ imported: { weights: number; meals: number; liquids: number } }> => {
   const response = await axiosInstanceLambda.post("/coach/bulk-import", {
     userId,
     weights,
     meals,
+    liquids,
   });
   return response.data;
 };

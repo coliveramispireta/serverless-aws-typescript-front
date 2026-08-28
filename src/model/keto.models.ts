@@ -136,7 +136,8 @@ export type FoodCategory =
   | "lacteo"
   | "fruto_seco"
   | "semilla"
-  | "otro";
+  | "otro"
+  | "no_keto";
 
 export interface FoodItem {
   foodId: string;
@@ -153,4 +154,5 @@ export interface LiquidEntry {
   userId: string;
   fechaHora: string;
   cantidadMl: number;
+  nota?: string;
 }

@@ -34,19 +34,18 @@ import {
   bulkImportData,
   CoachUserSummary,
 } from "@/services/keto/coach.service";
-
-// ─── Constantes ───────────────────────────────────────────────
-
-const WEIGHT_HEADERS = ["Fecha (dd/mm/yyyy)", "Peso (kg)", "Nota"];
-const MEAL_HEADERS = [
-  "Fecha (dd/mm/yyyy)",
-  "Hora (HH:mm)",
-  "Alimento",
-  "Gramos",
-  "Tipo",
-  "Nota",
-];
-const VALID_MEAL_TYPES = ["desayuno", "almuerzo", "cena", "snack"];
+import {
+  WEIGHT_HEADERS,
+  MEAL_HEADERS,
+  LIQUID_HEADERS,
+  VALID_MEAL_TYPES,
+  parseDateDDMMYYYY,
+  parseTimeHHMM,
+  cellString,
+  cellNumber,
+  makeIsoFromDateAndTime,
+  styleHeaderRow,
+} from "@/features/coach/importhelpers";
 
 // ─── Tipos ────────────────────────────────────────────────────
 
@@ -59,50 +58,6 @@ interface RowResult {
 }
 
 type Stage = "select" | "validating" | "review" | "importing" | "done";
-
-// ─── Helpers ──────────────────────────────────────────────────
-
-function parseDateDDMMYYYY(value: unknown): Date | null {
-  if (typeof value !== "string") return null;
-  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!match) return null;
-  const [, d, m, y] = match;
-  const date = new Date(Number(y), Number(m) - 1, Number(d));
-  if (
-    date.getDate() !== Number(d) ||
-    date.getMonth() !== Number(m) - 1 ||
-    date.getFullYear() !== Number(y)
-  )
-    return null;
-  return date;
-}
-
-function parseTimeHHMM(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const h = Number(match[1]);
-  const min = Number(match[2]);
-  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
-  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-}
-
-function cellString(cell: ExcelJS.Cell): string {
-  const v = cell.value;
-  if (v === null || v === undefined) return "";
-  if (typeof v === "object" && "text" in (v as unknown as Record<string, unknown>)) {
-    return String((v as unknown as { text: string }).text ?? "").trim();
-  }
-  return String(v).trim();
-}
-
-function cellNumber(cell: ExcelJS.Cell): number | null {
-  const v = cell.value;
-  if (v === null || v === undefined) return null;
-  if (typeof v === "number") return v;
-  const n = Number(String(v).trim());
-  return Number.isNaN(n) ? null : n;
-}
 
 // ─── Layout template download ─────────────────────────────────
 
@@ -118,17 +73,7 @@ async function downloadLayout() {
     { header: "Peso (kg)", key: "peso", width: 14 },
     { header: "Nota", key: "nota", width: 30 },
   ];
-  // Estilo header
-  wsP.getRow(1).eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF1A56DB" },
-    };
-    cell.alignment = { vertical: "middle" };
-  });
-  // Datos de ejemplo
+  styleHeaderRow(wsP.getRow(1));
   wsP.addRow(["15/01/2025", 95.5, "Inicio del programa"]);
   wsP.addRow(["22/01/2025", 94.2, ""]);
   wsP.addRow(["29/01/2025", 93.8, "Me sentí bien"]);
@@ -143,19 +88,25 @@ async function downloadLayout() {
     { header: "Tipo", key: "tipo", width: 14 },
     { header: "Nota", key: "nota", width: 28 },
   ];
-  wsC.getRow(1).eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF1A56DB" },
-    };
-    cell.alignment = { vertical: "middle" };
-  });
+  styleHeaderRow(wsC.getRow(1));
   wsC.addRow(["15/01/2025", "08:30", "Huevos con aguacate", 300, "desayuno", ""]);
   wsC.addRow(["15/01/2025", "13:00", "Ensalada de pollo", 400, "almuerzo", ""]);
   wsC.addRow(["15/01/2025", "20:00", "Salmón con brócoli", 350, "cena", ""]);
   wsC.addRow(["16/01/2025", "09:00", "Smoothie keto", 250, "desayuno", "Snack"]);
+
+  // ── Hoja Líquidos (opcional; la validación la admite con o sin ella) ──
+  const wsL = wb.addWorksheet("Líquidos");
+  wsL.columns = [
+    { header: "Fecha (dd/mm/yyyy)", key: "fecha", width: 22 },
+    { header: "Hora (HH:mm)", key: "hora", width: 16 },
+    { header: "Cantidad (ml)", key: "ml", width: 14 },
+    { header: "Nota", key: "nota", width: 28 },
+  ];
+  styleHeaderRow(wsL.getRow(1));
+  wsL.addRow(["15/01/2025", "10:00", 250, "café"]);
+  wsL.addRow(["15/01/2025", "14:00", 1000, "1 L de agua"]);
+  wsL.addRow(["15/01/2025", "20:00", 500, ""]);
+  wsL.addRow(["16/01/2025", "9:00", 2000, "2 L de agua"]);
 
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], {
@@ -180,6 +131,7 @@ export default function CoachImportView() {
   const [importResult, setImportResult] = useState<{
     weights: number;
     meals: number;
+    liquids: number;
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -434,6 +386,105 @@ export default function CoachImportView() {
           }
         }
 
+        // ── Validar hoja Líquidos (opcional: si no existe, el archivo sigue siendo válido) ──
+        const wsL = wb.getWorksheet("Líquidos");
+        if (wsL) {
+          const lHeaders: string[] = [];
+          wsL.getRow(1).eachCell({ includeEmpty: false }, (cell) => {
+            lHeaders.push(cellString(cell));
+          });
+          const headersOk =
+            lHeaders.length === LIQUID_HEADERS.length &&
+            lHeaders.every((h, i) => h === LIQUID_HEADERS[i]);
+          if (!headersOk) {
+            rowResults.push({
+              row: 0,
+              sheet: "Líquidos",
+              valid: false,
+              errors: [
+                `Headers de "Líquidos" inválidos. Se esperaba: ${LIQUID_HEADERS.join(" | ")}`,
+              ],
+            });
+          } else {
+            const now = new Date();
+            const seenDT = new Set<string>();
+
+            wsL.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+              if (rowNumber === 1) return;
+
+              const fechaRaw = cellString(row.getCell(1));
+              const horaRaw = cellString(row.getCell(2));
+              const mlRaw = cellNumber(row.getCell(3));
+              const notaRaw = cellString(row.getCell(4));
+
+              // Fila vacía → ignorar
+              if (!fechaRaw && !horaRaw && mlRaw === null && !notaRaw) return;
+
+              const errors: string[] = [];
+
+              // Fecha
+              let fechaDate: Date | null = null;
+              if (!fechaRaw) {
+                errors.push("Fecha vacía");
+              } else {
+                fechaDate = parseDateDDMMYYYY(fechaRaw);
+                if (!fechaDate) {
+                  errors.push("Formato de fecha inválido (usar dd/mm/yyyy)");
+                } else if (fechaDate > now) {
+                  errors.push("La fecha no puede ser futura");
+                }
+              }
+
+              // Hora
+              const horaParsed = parseTimeHHMM(horaRaw);
+              if (!horaRaw) {
+                errors.push("Hora vacía");
+              } else if (!horaParsed) {
+                errors.push("Formato de hora inválido (usar HH:mm)");
+              }
+
+              // Duplicado fecha+hora
+              if (fechaDate && horaParsed) {
+                const key = `${fechaDate.toISOString().slice(0, 10)}_${horaParsed}`;
+                if (seenDT.has(key)) {
+                  errors.push("Ya existe un registro para esta fecha y hora");
+                }
+                seenDT.add(key);
+              }
+
+              // Cantidad
+              if (mlRaw === null) {
+                errors.push("Cantidad vacía");
+              } else if (mlRaw <= 0 || mlRaw > 10000) {
+                errors.push("Cantidad debe ser entre 1 y 10000 ml");
+              }
+
+              // Nota
+              if (notaRaw.length > 200) {
+                errors.push("La nota excede 200 caracteres");
+              }
+
+              const valid = errors.length === 0;
+              let data: Record<string, unknown> | undefined;
+              if (valid && fechaDate && horaParsed) {
+                data = {
+                  fechaHora: makeIsoFromDateAndTime(fechaDate, horaParsed),
+                  cantidadMl: mlRaw!,
+                  nota: notaRaw || undefined,
+                };
+              }
+
+              rowResults.push({
+                row: rowNumber,
+                sheet: "Líquidos",
+                valid,
+                errors,
+                data,
+              });
+            });
+          }
+        }
+
         setResults(rowResults);
         setStage("review");
       } catch (err) {
@@ -486,9 +537,19 @@ export default function CoachImportView() {
             nota?: string;
           },
       );
+    const liquids = validRows
+      .filter((r) => r.sheet === "Líquidos")
+      .map(
+        (r) =>
+          r.data as {
+            fechaHora: string;
+            cantidadMl: number;
+            nota?: string;
+          },
+      );
 
     try {
-      const res = await bulkImportData(selectedUserId, weights, meals);
+      const res = await bulkImportData(selectedUserId, weights, meals, liquids);
       setImportResult(res.imported);
       setStage("done");
     } catch (err) {
@@ -746,13 +807,16 @@ export default function CoachImportView() {
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
               Se importaron{" "}
-              <strong>
-                {importResult.weights} peso{importResult.weights !== 1 ? "s" : ""}
-              </strong>{" "}
-              y{" "}
-              <strong>
-                {importResult.meals} comida{importResult.meals !== 1 ? "s" : ""}
-              </strong>{" "}
+              {[
+                importResult.weights > 0 &&
+                  `${importResult.weights} peso${importResult.weights !== 1 ? "s" : ""}`,
+                importResult.meals > 0 &&
+                  `${importResult.meals} comida${importResult.meals !== 1 ? "s" : ""}`,
+                importResult.liquids > 0 &&
+                  `${importResult.liquids} registro${importResult.liquids !== 1 ? "s" : ""} de líquidos`,
+              ]
+                .filter((p): p is string => Boolean(p))
+                .join(", ")}{" "}
               para el usuario seleccionado.
             </Typography>
             <Button variant="contained" onClick={handleReset}>

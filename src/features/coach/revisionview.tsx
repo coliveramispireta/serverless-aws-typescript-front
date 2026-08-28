@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -18,6 +18,7 @@ import WeightChart from "@/components/ui/weightchart";
 import dayjs from "dayjs";
 import { getUserProgress, listCoachUsers, UserProgress } from "@/services/keto/coach.service";
 import { CoachUserSummary } from "@/services/keto/coach.service";
+import { LiquidEntry } from "@/model/keto.models";
 
 /**
  * Revisión individual: selecciona un usuario y revisa su alimentación,
@@ -57,6 +58,27 @@ export default function CoachRevisionView() {
       })
       .finally(() => setLoadingProgress(false));
   }, [selectedUserId]);
+
+  // ─── Líquidos agrupados por día (total en litros) ───
+  const liquidosPorDia = useMemo(() => {
+    const groups = new Map<string, LiquidEntry[]>();
+    for (const l of progress?.liquidos ?? []) {
+      const key = dayjs(l.fechaHora).format("YYYY-MM-DD");
+      const arr = groups.get(key) ?? [];
+      arr.push(l);
+      groups.set(key, arr);
+    }
+    return Array.from(groups.entries())
+      .map(([key, items]) => ({
+        key,
+        label: dayjs(`${key}T12:00:00`).format("dddd DD [de] MMMM"),
+        totalMl: items.reduce((sum, l) => sum + l.cantidadMl, 0),
+        items: [...items].sort(
+          (a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime(),
+        ),
+      }))
+      .sort((a, b) => (a.key < b.key ? 1 : -1));
+  }, [progress]);
 
   if (usersError) {
     return <EmptyState emoji="📡" title="Sin conexión" description={usersError} />;
@@ -101,6 +123,7 @@ export default function CoachRevisionView() {
           >
             <Tab label="Peso" />
             <Tab label="Alimentación" />
+            <Tab label="Hidratación" />
             <Tab label="Evidencias" />
             <Tab label="Logros" />
           </Tabs>
@@ -153,8 +176,51 @@ export default function CoachRevisionView() {
             )
           )}
 
-          {/* Evidencias */}
+          {/* Hidratación */}
           {tab === 2 && (
+            liquidosPorDia.length === 0 ? (
+              <EmptyState
+                emoji="💧"
+                title="Sin registros de hidratación"
+                description="La hidratación del usuario aparecerá aquí cuando se cargue (p. ej. con la hoja Líquidos de la carga masiva)."
+              />
+            ) : (
+              liquidosPorDia.map((d) => (
+                <Card key={d.key} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1 }}>
+                  <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                      <Typography variant="subtitle2" fontWeight={700} sx={{ textTransform: "capitalize" }}>
+                        {d.label}
+                      </Typography>
+                      <Typography variant="subtitle2" fontWeight={800} color="info.main">
+                        {(d.totalMl / 1000).toLocaleString("es-PE", { maximumFractionDigits: 2 })} L
+                      </Typography>
+                    </Box>
+                    {d.items.map((l) => (
+                      <Box
+                        key={l.id}
+                        display="flex"
+                        justifyContent="space-between"
+                        py={0.6}
+                        borderBottom="1px solid"
+                        borderColor="AMUltraLightGray.main"
+                      >
+                        <Typography variant="body2">
+                          {dayjs(l.fechaHora).format("HH:mm")} · {l.cantidadMl} ml
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ ml: 2, textAlign: "right" }}>
+                          {l.nota ?? ""}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))
+            )
+          )}
+
+          {/* Evidencias */}
+          {tab === 3 && (
             (() => {
               const conFoto = (progress.pesos ?? []).filter((w) => w.evidenciaFotoUrl);
               return conFoto.length === 0 ? (
@@ -175,7 +241,7 @@ export default function CoachRevisionView() {
           )}
 
           {/* Logros */}
-          {tab === 3 && (
+          {tab === 4 && (
             (progress.logros ?? []).length === 0 ? (
               <EmptyState emoji="🏅" title="Sin logros registrados" />
             ) : (

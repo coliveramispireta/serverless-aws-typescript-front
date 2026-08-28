@@ -76,7 +76,8 @@ export default function CoachFlyerView() {
       loadRecent();
     } catch (err) {
       console.error(err);
-      setSnack({ type: "error", msg: "No se pudo publicar. Intenta de nuevo." });
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setSnack({ type: "error", msg: msg || "No se pudo publicar. Intenta de nuevo." });
     } finally {
       setPublishing(false);
     }

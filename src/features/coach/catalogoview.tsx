@@ -7,12 +7,21 @@ import {
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
   LinearProgress,
+  MenuItem,
+  Select,
+  TextField,
   Typography,
 } from "@mui/material";
-import { CheckCircleOutline, ErrorOutline, Storefront } from "@mui/icons-material";
-import { listFoods, seedFoods } from "@/services/keto/foods.service";
-import { FoodCategory, FoodItem } from "@/model/keto.models";
+import { Add, CheckCircleOutline, ErrorOutline, Storefront } from "@mui/icons-material";
+import { createFood, listFoods, seedFoods } from "@/services/keto/foods.service";
+import { FoodCategory, FoodItem, FoodUnit } from "@/model/keto.models";
 
 const CATEGORY_LABELS: Record<FoodCategory, string> = {
   proteina: "Proteínas",
@@ -22,6 +31,7 @@ const CATEGORY_LABELS: Record<FoodCategory, string> = {
   fruto_seco: "Frutos secos",
   semilla: "Semillas",
   otro: "Otros",
+  no_keto: "Alimentos no KETO",
 };
 
 const CATEGORY_ORDER: FoodCategory[] = [
@@ -32,7 +42,13 @@ const CATEGORY_ORDER: FoodCategory[] = [
   "fruto_seco",
   "semilla",
   "otro",
+  "no_keto",
 ];
+
+const CATEGORY_OPTIONS = (Object.keys(CATEGORY_LABELS) as FoodCategory[]).map((c) => ({
+  value: c,
+  label: CATEGORY_LABELS[c],
+}));
 
 type SeedState =
   | { status: "idle" }
@@ -52,6 +68,15 @@ export default function CoachCatalogoView() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [seed, setSeed] = useState<SeedState>({ status: "idle" });
+  const [addOpen, setAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [form, setForm] = useState<{
+    nombre: string;
+    unidad: FoodUnit;
+    equivalenciaGramos: string;
+    categoria: FoodCategory;
+  }>({ nombre: "", unidad: "g", equivalenciaGramos: "", categoria: "proteina" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,6 +114,46 @@ export default function CoachCatalogoView() {
       }
     }
   }, [load]);
+
+  const openAdd = () => {
+    setForm({ nombre: "", unidad: "g", equivalenciaGramos: "", categoria: "proteina" });
+    setAddError(null);
+    setAddOpen(true);
+  };
+
+  const handleAdd = useCallback(async () => {
+    const nombre = form.nombre.trim();
+    if (!nombre) {
+      setAddError("Escribe el nombre del alimento.");
+      return;
+    }
+    setSaving(true);
+    setAddError(null);
+    try {
+      await createFood({
+        nombre,
+        unidad: form.unidad,
+        equivalenciaGramos:
+          form.unidad === "und" && form.equivalenciaGramos.trim()
+            ? Number(form.equivalenciaGramos)
+            : undefined,
+        categoria: form.categoria,
+      });
+      setAddOpen(false);
+      await load();
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setAddError("Tu correo no está autorizado como coach.");
+      } else if (status === 400) {
+        setAddError("Datos inválidos. Revisa nombre, unidad y categoría.");
+      } else {
+        setAddError("No se pudo agregar el alimento.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [form, load]);
 
   const grouped = useMemo(() => {
     const map = new Map<FoodCategory, FoodItem[]>();
@@ -149,6 +214,9 @@ export default function CoachCatalogoView() {
             >
               {seed.status === "loading" ? "Cargando..." : "Cargar catálogo inicial"}
             </Button>
+            <Button variant="outlined" startIcon={<Add />} onClick={openAdd}>
+              Agregar alimento
+            </Button>
           </Box>
 
           {seed.status === "success" && (
@@ -191,6 +259,7 @@ export default function CoachCatalogoView() {
                       label={`${f.nombre} (${unidadLabel(f)})`}
                       size="small"
                       variant="outlined"
+                      color={cat === "no_keto" ? "error" : "default"}
                     />
                   ))}
                 </Box>
@@ -199,6 +268,75 @@ export default function CoachCatalogoView() {
           ))}
         </Box>
       )}
+
+      {/* Modal: Agregar alimento */}
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle fontWeight={800}>Agregar alimento al catálogo</DialogTitle>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={1.5} mt={0.5}>
+            <TextField
+              label="Nombre"
+              size="small"
+              fullWidth
+              value={form.nombre}
+              onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
+            />
+            <FormControl size="small" fullWidth>
+              <InputLabel>Unidad</InputLabel>
+              <Select
+                label="Unidad"
+                value={form.unidad}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, unidad: e.target.value as FoodUnit }))
+                }
+              >
+                <MenuItem value="g">g (gramos)</MenuItem>
+                <MenuItem value="und">und (unidades)</MenuItem>
+                <MenuItem value="ml">ml (mililitros)</MenuItem>
+              </Select>
+            </FormControl>
+            {form.unidad === "und" && (
+              <TextField
+                label="Equivalencia por unidad (g)"
+                type="number"
+                size="small"
+                fullWidth
+                value={form.equivalenciaGramos}
+                onChange={(e) => setForm((p) => ({ ...p, equivalenciaGramos: e.target.value }))}
+              />
+            )}
+            <FormControl size="small" fullWidth>
+              <InputLabel>Categoría</InputLabel>
+              <Select
+                label="Categoría"
+                value={form.categoria}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, categoria: e.target.value as FoodCategory }))
+                }
+              >
+                {CATEGORY_OPTIONS.map((o) => (
+                  <MenuItem key={o.value} value={o.value}>
+                    {o.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {addError && (
+              <Typography variant="caption" color="error">
+                ⚠️ {addError}
+              </Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button color="inherit" onClick={() => setAddOpen(false)}>
+            Cancelar
+          </Button>
+          <Button variant="contained" disabled={saving || !form.nombre.trim()} onClick={handleAdd}>
+            {saving ? "Guardando..." : "Agregar"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

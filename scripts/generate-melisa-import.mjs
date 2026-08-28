@@ -4,6 +4,7 @@
 // Formato 100% compatible con src/features/coach/importview.tsx:
 //   - Hoja "Pesos"    → Fecha (dd/mm/yyyy) | Peso (kg) | Nota
 //   - Hoja "Comidas"  → Fecha (dd/mm/yyyy) | Hora (HH:mm) | Alimento | Gramos | Tipo | Nota
+//   - Hoja "Líquidos" → Fecha (dd/mm/yyyy) | Hora (HH:mm) | Cantidad (ml) | Nota
 //   - Hoja "Supuestos"→ extra (no afecta la validación de la app)
 // Fechas y horas se escriben SIEMPRE como texto literal para que
 // la validación del importview las acepte.
@@ -27,6 +28,7 @@ const MEAL_HEADERS = [
   "Nota",
 ];
 const WEIGHT_HEADERS = ["Fecha (dd/mm/yyyy)", "Peso (kg)", "Nota"];
+const LIQUID_HEADERS = ["Fecha (dd/mm/yyyy)", "Hora (HH:mm)", "Cantidad (ml)", "Nota"];
 const VALID_MEAL_TYPES = ["desayuno", "almuerzo", "cena", "snack"];
 
 // ─── Datos extraídos del chat (CHATS.txt) ─────────────────────
@@ -79,10 +81,23 @@ const ASSUMPTIONS = [
   ["Tomate", "≈ 100 g (1 tomate mediano)", "Estimado"],
   ["Chicharrón Fritolay", "≈ 45 g (una bolsa)", "Estimado"],
   ["Jamón de pavita", "≈ 30 g (lonchas)", "Estimado"],
-  ["Café / té / agua", "No se importa como comida (el bulk import solo maneja pesos y comidas)", "Nota"],
+  ["Café / té / agua", "Se importan como Líquidos (hoja Líquidos). Cantidades en ml estimadas según el chat", "Estimado"],
+  ["Hoja Líquidos", "Opcional en la app: si el archivo no la trae, no afecta la validación", "Nota"],
   ["Hoja Pesos", "Sin filas: no había kg reales en el chat (fotos omitidas); el coach los captura aparte", "Nota"],
   ["Múltiples alimentos por comida", "Se desfasa la hora en +5 min para evitar el check de fecha+hora duplicada", "Nota"],
   ["25/08 y 27/08", "Sin comidas reportadas en el chat", "Nota"],
+];
+
+// ─── Hidratación extraída del chat (hoja Líquidos) ────────────
+// [fecha, hora, cantidadMl, nota]
+const LIQUIDS = [
+  ["20/08/2026", "14:00", 1000, "1 L de agua (con almuerzo)"],
+  ["21/08/2026", "10:05", 200, "café"],
+  ["21/08/2026", "20:00", 1500, "1.5 L de agua + té helado sin azúcar"],
+  ["22/08/2026", "19:00", 2000, "2 L de agua aprox"],
+  ["23/08/2026", "18:30", 2000, "2 L de agua aprox"],
+  ["24/08/2026", "12:00", 200, "café americano"],
+  ["24/08/2026", "13:35", 1500, "1.5 L de agua"],
 ];
 
 // ─── Helpers de validación (misma lógica que importview) ──────
@@ -147,6 +162,45 @@ function validateMeals(rows) {
   }
 }
 
+function validateLiquids(rows) {
+  const errors = [];
+  const seenDT = new Set();
+  const now = new Date();
+
+  rows.forEach(([fechaRaw, horaRaw, mlRaw, notaRaw], idx) => {
+    const rowNum = idx + 2; // +1 por header
+    const rowErrors = [];
+
+    const fechaDate = parseDateDDMMYYYY(fechaRaw);
+    if (!fechaRaw || !fechaDate) {
+      rowErrors.push("Fecha inválida");
+    } else if (fechaDate > now) {
+      rowErrors.push("Fecha futura");
+    }
+
+    const horaParsed = parseTimeHHMM(horaRaw);
+    if (!horaParsed) rowErrors.push("Hora inválida");
+
+    if (fechaDate && horaParsed) {
+      const key = `${fechaDate.toISOString().slice(0, 10)}_${horaParsed}`;
+      if (seenDT.has(key)) rowErrors.push("Fecha+hora duplicada");
+      seenDT.add(key);
+    }
+
+    if (typeof mlRaw !== "number" || !(mlRaw > 0 && mlRaw <= 10000)) {
+      rowErrors.push("Cantidad (ml) inválida (1–10000)");
+    }
+
+    if (notaRaw && notaRaw.length > 200) rowErrors.push("Nota > 200");
+
+    if (rowErrors.length > 0) errors.push(`Fila ${rowNum}: ${rowErrors.join("; ")}`);
+  });
+
+  if (errors.length > 0) {
+    throw new Error("Validación de líquidos falló:\n" + errors.join("\n"));
+  }
+}
+
 function styleHeaderRow(row) {
   row.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -157,6 +211,7 @@ function styleHeaderRow(row) {
 
 async function main() {
   validateMeals(MEALS);
+  validateLiquids(LIQUIDS);
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "KetoFlow Coach";
@@ -182,6 +237,17 @@ async function main() {
   ];
   styleHeaderRow(wsC.getRow(1));
   for (const row of MEALS) wsC.addRow(row);
+
+  // ── Hoja Líquidos ──
+  const wsL = wb.addWorksheet("Líquidos");
+  wsL.columns = [
+    { header: "Fecha (dd/mm/yyyy)", width: 22 },
+    { header: "Hora (HH:mm)", width: 16 },
+    { header: "Cantidad (ml)", width: 14 },
+    { header: "Nota", width: 42 },
+  ];
+  styleHeaderRow(wsL.getRow(1));
+  for (const row of LIQUIDS) wsL.addRow(row);
 
   // ── Hoja Supuestos (extra, la app la ignora) ──
   const wsA = wb.addWorksheet("Supuestos");
@@ -211,6 +277,13 @@ async function main() {
   if (cHeaders.length !== MEAL_HEADERS.length || !cHeaders.every((h, i) => h === MEAL_HEADERS[i])) {
     throw new Error(`Headers de Comidas no coinciden: ${cHeaders.join(" | ")}`);
   }
+  const wsLcheck = check.getWorksheet("Líquidos");
+  if (!wsLcheck) throw new Error("Falta la hoja Líquidos");
+  const lHeaders = [];
+  wsLcheck.getRow(1).eachCell({ includeEmpty: false }, (cell) => lHeaders.push(String(cell.value).trim()));
+  if (lHeaders.length !== LIQUID_HEADERS.length || !lHeaders.every((h, i) => h === LIQUID_HEADERS[i])) {
+    throw new Error(`Headers de Líquidos no coinciden: ${lHeaders.join(" | ")}`);
+  }
   const wsPcheck = check.getWorksheet("Pesos");
   const pHeaders = [];
   wsPcheck.getRow(1).eachCell({ includeEmpty: false }, (cell) => pHeaders.push(String(cell.value).trim()));
@@ -220,7 +293,7 @@ async function main() {
 
   console.log("✅ Archivo generado y verificado:");
   console.log(`   ${OUT_FILE}`);
-  console.log(`   Comidas: ${MEALS.length} filas · Pesos: solo encabezados · Supuestos: ${ASSUMPTIONS.length} filas`);
+  console.log(`   Comidas: ${MEALS.length} filas · Líquidos: ${LIQUIDS.length} filas · Pesos: solo encabezados · Supuestos: ${ASSUMPTIONS.length} filas`);
   console.log("   Válido para el flujo: Coach → Importar datos de usuario.");
 }
 
