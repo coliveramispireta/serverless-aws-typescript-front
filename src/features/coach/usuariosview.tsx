@@ -256,6 +256,7 @@ export default function CoachUsuariosView() {
             const perdida = u.perdidaTotalKg ?? 0;
             const alerta = !u.disabled && u.diasSinRegistrar != null && u.diasSinRegistrar > 3;
             const isDisabled = u.disabled ?? false;
+            const sinPerfil = !u.nombre?.trim() && !u.email?.trim();
             return (
               <Card
                 key={u.userId}
@@ -285,8 +286,17 @@ export default function CoachUsuariosView() {
                   <Box flex={1} minWidth={0}>
                     <Box display="flex" alignItems="center" gap={0.5}>
                       <Typography fontWeight={700} noWrap>
-                        {u.nombre}
+                        {u.nombre || (sinPerfil ? "Usuario sin perfil" : "—")}
                       </Typography>
+                      {sinPerfil && (
+                        <Chip
+                          size="small"
+                          label="Perfil incompleto"
+                          color="warning"
+                          variant="outlined"
+                          sx={{ height: 20, fontSize: "0.65rem" }}
+                        />
+                      )}
                       {isDisabled && (
                         <Chip
                           size="small"
@@ -297,9 +307,11 @@ export default function CoachUsuariosView() {
                         />
                       )}
                     </Box>
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">
-                      {u.email}
-                    </Typography>
+                    {u.email ? (
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {u.email}
+                      </Typography>
+                    ) : null}
                   </Box>
                   <Box textAlign="right">
                     {u.pesoActualKg != null && (
