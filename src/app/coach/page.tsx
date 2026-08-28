@@ -17,6 +17,7 @@ import {
   NotificationsActive,
   People,
   Restaurant,
+  Storefront,
   Timeline,
   UploadFile,
 } from "@mui/icons-material";
@@ -30,6 +31,7 @@ import CoachRecetasView from "@/features/coach/recetasview";
 import CoachActividadView from "@/features/coach/actividadview";
 import CoachFlyerView from "@/features/coach/flyerview";
 import CoachImportView from "@/features/coach/importview";
+import CoachCatalogoView from "@/features/coach/catalogoview";
 
 const TABS = [
   { label: "Usuarios", icon: <People />, element: <CoachUsuariosView /> },
@@ -40,6 +42,7 @@ const TABS = [
   { label: "Recetas", icon: <MenuBook />, element: <CoachRecetasView /> },
   { label: "Actividad", icon: <NotificationsActive />, element: <CoachActividadView /> },
   { label: "Importar", icon: <UploadFile />, element: <CoachImportView /> },
+  { label: "Catálogo", icon: <Storefront />, element: <CoachCatalogoView /> },
 ];
 
 /**
