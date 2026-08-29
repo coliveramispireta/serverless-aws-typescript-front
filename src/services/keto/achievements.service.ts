@@ -1,9 +1,9 @@
 import { axiosInstanceLambda } from "@/interceptors/interceptors";
-import { Achievement } from "@/model/keto.models";
+import { Achievement, Post } from "@/model/keto.models";
 
 /**
  * Contrato del servicio de logros.
- * Endpoints esperados del backend: /achievements
+ * Endpoints del backend: /achievements (GET) y /achievements/share (POST).
  * Los logros automáticos los calcula el frontend (lib/engine/achievements)
  * y este servicio los sincroniza/persiste.
  */
@@ -13,9 +13,21 @@ export const listAchievements = async (): Promise<Achievement[]> => {
   return response.data;
 };
 
+export interface ShareAchievementPayload {
+  codigo: string;
+  titulo: string;
+  descripcion?: string;
+  emoji: string;
+  texto: string;
+}
+
+/**
+ * POST /achievements/share — marca el logro como compartido y crea la
+ * publicación en el muro de la comunidad (feed del grupo).
+ */
 export const shareAchievement = async (
-  achievementId: string,
-  texto?: string
-): Promise<void> => {
-  await axiosInstanceLambda.post(`/achievements/${achievementId}/share`, { texto });
+  payload: ShareAchievementPayload
+): Promise<{ achievement: Achievement; post: Post }> => {
+  const response = await axiosInstanceLambda.post("/achievements/share", payload);
+  return response.data;
 };

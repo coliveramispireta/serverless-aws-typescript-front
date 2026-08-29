@@ -15,12 +15,13 @@ import { Share } from "@mui/icons-material";
 import EmptyState from "@/components/ui/emptystate";
 import SectionHeader from "@/components/ui/sectionheader";
 import SourceBadge from "@/components/ui/sourcebadge";
+import ShareAchievementDialog, { ShareableAchievement } from "@/components/ui/shareachievementdialog";
 import useUserData from "@/hooks/useuserdata";
 import { ACHIEVEMENT_RULES } from "@/lib/engine/achievements";
 import { computeMetrics } from "@/lib/engine/metrics";
 import { getProfilePrefs } from "@/lib/profileprefs";
 import { Achievement } from "@/model/keto.models";
-import { listAchievements, shareAchievement } from "@/services/keto/achievements.service";
+import { listAchievements } from "@/services/keto/achievements.service";
 import { getUserInfo } from "@/services/xstorage.cross.service";
 
 /**
@@ -33,8 +34,9 @@ export default function LogrosPage() {
   const { weights, meals, loading, error, reload } = useUserData();
   const [coachAchievements, setCoachAchievements] = useState<Achievement[]>([]);
   const [coachError, setCoachError] = useState(false);
-  const [sharingId, setSharingId] = useState<string | null>(null);
-  const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareTarget, setShareTarget] = useState<ShareableAchievement | null>(null);
+  const [publishedCodes, setPublishedCodes] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     listAchievements()
@@ -55,18 +57,18 @@ export default function LogrosPage() {
   const totalUnlocked =
     autoStatus.filter((a) => a.earned).length + coachAchievements.length;
 
-  const handleShare = async (achievement: { id: string; codigo?: string; titulo: string }) => {
-    setSharingId(achievement.id);
-    setShareMessage(null);
-    try {
-      await shareAchievement(achievement.id, `¡Logré "${achievement.titulo}" en mi camino keto! 🎉`);
-      setShareMessage(`Compartiste "${achievement.titulo}" con la comunidad.`);
-    } catch (err) {
-      console.error(err);
-      setShareMessage("No se pudo compartir ahora (servicio no disponible aún).");
-    } finally {
-      setSharingId(null);
-    }
+  const openShare = (achievement: ShareableAchievement) => {
+    setShareTarget(achievement);
+    setShareOpen(true);
+  };
+
+  const handlePublished = (codigo: string) => {
+    setPublishedCodes((prev) => new Set(prev).add(codigo));
+  };
+
+  const closeShare = () => {
+    setShareOpen(false);
+    setShareTarget(null);
   };
 
   if (loading) {
@@ -113,15 +115,25 @@ export default function LogrosPage() {
                 </Typography>
                 <Box mt={1.5}>
                   {a.earned ? (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      startIcon={<Share />}
-                      disabled={sharingId === a.codigo}
-                      onClick={() => handleShare({ id: a.codigo, codigo: a.codigo, titulo: a.titulo })}
-                    >
-                      Compartir
-                    </Button>
+                    <>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<Share />}
+                        onClick={() => openShare({ codigo: a.codigo, titulo: a.titulo, descripcion: a.descripcion, emoji: a.emoji })}
+                      >
+                        Compartir
+                      </Button>
+                      {publishedCodes.has(a.codigo) && (
+                        <Chip
+                          size="small"
+                          color="success"
+                          variant="outlined"
+                          label="✓ En el muro"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </>
                   ) : (
                     <Chip size="small" label="Bloqueado 🔒" variant="outlined" />
                   )}
@@ -157,11 +169,19 @@ export default function LogrosPage() {
                         variant="outlined"
                         color="secondary"
                         startIcon={<Share />}
-                        disabled={sharingId === a.id}
-                        onClick={() => handleShare(a)}
+                        onClick={() => openShare({ codigo: a.codigo, titulo: a.titulo, descripcion: a.descripcion, emoji: a.emoji })}
                       >
                         Compartir
                       </Button>
+                      {publishedCodes.has(a.codigo) && (
+                        <Chip
+                          size="small"
+                          color="success"
+                          variant="outlined"
+                          label="✓ En el muro"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
                     </Box>
                   </CardContent>
                 </Card>
@@ -177,11 +197,14 @@ export default function LogrosPage() {
         ) : null}
       </Box>
 
-      {shareMessage && (
-        <Typography variant="caption" color="primary" display="block" textAlign="center" mt={3}>
-          {shareMessage}
-        </Typography>
-      )}
+      {/* Diálogo de compartir logro */}
+      <ShareAchievementDialog
+        open={shareOpen}
+        achievement={shareTarget}
+        alreadyPublished={shareTarget ? publishedCodes.has(shareTarget.codigo) : false}
+        onClose={closeShare}
+        onPublished={handlePublished}
+      />
 
       {/* El usuario comparte desde aquí; identidad para el feed */}
       <Box mt={4} textAlign="center">
