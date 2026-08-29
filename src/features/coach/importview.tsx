@@ -164,15 +164,35 @@ export default function CoachImportView() {
 
         const rowResults: RowResult[] = [];
 
-        // ── Validar hoja Pesos ──
-        const wsP = wb.getWorksheet("Pesos");
+        // Localiza hojas por nombre (ignorando tildes/mayúsculas) o, si el
+        // nombre cambió, por coincidencia de encabezados con el layout.
+        const norm = (s: string) =>
+          s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        const findSheet = (
+          name: string,
+          headers: string[],
+        ): ExcelJS.Worksheet | null => {
+          const n = norm(name);
+          for (const ws of wb.worksheets) {
+            if (norm(ws.name) === n) return ws;
+          }
+          for (const ws of wb.worksheets) {
+            const hs: string[] = [];
+            ws.getRow(1).eachCell({ includeEmpty: false }, (cell) => {
+              hs.push(cellString(cell));
+            });
+            if (hs.length === headers.length && hs.every((h, i) => h === headers[i])) {
+              return ws;
+            }
+          }
+          return null;
+        };
+
+        // ── Validar hoja Pesos (opcional: se importa lo que traiga el archivo) ──
+        const wsP = findSheet("Pesos", WEIGHT_HEADERS);
         if (!wsP) {
-          rowResults.push({
-            row: 0,
-            sheet: "Pesos",
-            valid: false,
-            errors: ['Falta la hoja "Pesos" en el archivo'],
-          });
+          // Hoja Pesos ausente: no bloquea el import, se cargan las demás.
         } else {
           // Validar headers
           const pHeaders: string[] = [];
@@ -259,15 +279,10 @@ export default function CoachImportView() {
           }
         }
 
-        // ── Validar hoja Comidas ──
-        const wsC = wb.getWorksheet("Comidas");
+        // ── Validar hoja Comidas (opcional) ──
+        const wsC = findSheet("Comidas", MEAL_HEADERS);
         if (!wsC) {
-          rowResults.push({
-            row: 0,
-            sheet: "Comidas",
-            valid: false,
-            errors: ['Falta la hoja "Comidas" en el archivo'],
-          });
+          // Hoja Comidas ausente: no bloquea el import.
         } else {
           const cHeaders: string[] = [];
           wsC.getRow(1).eachCell({ includeEmpty: false }, (cell) => {
@@ -386,8 +401,8 @@ export default function CoachImportView() {
           }
         }
 
-        // ── Validar hoja Líquidos (opcional: si no existe, el archivo sigue siendo válido) ──
-        const wsL = wb.getWorksheet("Líquidos");
+        // ── Validar hoja Líquidos (opcional) ──
+        const wsL = findSheet("Líquidos", LIQUID_HEADERS);
         if (wsL) {
           const lHeaders: string[] = [];
           wsL.getRow(1).eachCell({ includeEmpty: false }, (cell) => {
@@ -483,6 +498,17 @@ export default function CoachImportView() {
               });
             });
           }
+        }
+
+        if (rowResults.length === 0) {
+          rowResults.push({
+            row: 0,
+            sheet: "-",
+            valid: false,
+            errors: [
+              "No se encontró ninguna hoja con el formato esperado (Pesos, Comidas o Líquidos). Descarga el layout de ejemplo.",
+            ],
+          });
         }
 
         setResults(rowResults);

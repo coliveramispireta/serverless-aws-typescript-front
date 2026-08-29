@@ -104,13 +104,22 @@ export default function AlimentacionPage() {
     return [...keto.sort(byName), ...nonKeto.sort(byName)];
   }, [foods]);
 
-  // Cargar líquidos al cambiar a pestaña 1
+  // Cargar líquidos al cambiar a pestaña 1 (filtro por día LOCAL en el cliente:
+  // el backend guarda UTC, por eso no se filtra con ?fecha= del servidor)
   const loadLiquids = useCallback(() => {
     if (tab !== 1) return;
     setLiquidsLoading(true);
-    const hoy = dayjs().format("YYYY-MM-DD");
-    listLiquids(hoy)
-      .then((data) => setLiquids(Array.isArray(data) ? data : []))
+    const hoy = dayjs();
+    listLiquids()
+      .then((data) => {
+        const arr = Array.isArray(data) ? data : [];
+        setLiquids(
+          arr.filter((l) => {
+            const d = dayjs(l.fechaHora);
+            return d.isValid() && d.isSame(hoy, "day");
+          })
+        );
+      })
       .catch(() => setLiquids([]))
       .finally(() => setLiquidsLoading(false));
   }, [tab]);
