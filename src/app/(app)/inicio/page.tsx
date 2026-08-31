@@ -18,12 +18,14 @@ import {
   NotificationsActive,
   Speed,
   TrendingDown,
+  UploadFile,
 } from "@mui/icons-material";
 import Link from "next/link";
 
 import EmptyState from "@/components/ui/emptystate";
 import SourceBadge from "@/components/ui/sourcebadge";
 import StatCard from "@/components/ui/statcard";
+import UserImportDialog from "@/components/ui/userimportdialog";
 import WeightChart from "@/components/ui/weightchart";
 import {
   HydrationChart,
@@ -59,6 +61,7 @@ export default function InicioPage() {
 
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [pushMsgOk, setPushMsgOk] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
 
   const metrics = useMemo(
     () => computeMetrics(weights, meals, prefs),
@@ -71,7 +74,16 @@ export default function InicioPage() {
     () => computeHydrationStats(liquids, metrics.pesoActual, prefs.alturaCm),
     [liquids, metrics.pesoActual, prefs.alturaCm]
   );
-  const achievements = useMemo(() => evaluateAchievements(weights, meals, prefs), [weights, meals, prefs]);
+  const achievements = useMemo(
+    () =>
+      evaluateAchievements(weights, meals, {
+        ...prefs,
+        liquids,
+        nutrition: nutritionStats,
+        hydration,
+      }),
+    [weights, meals, prefs, liquids, nutritionStats, hydration]
+  );
 
   // Textos de ayuda (tooltip) para explicar cada métrica
   const helpPeso =
@@ -375,6 +387,32 @@ export default function InicioPage() {
         ]}
       />
 
+      {/* Ponerme al día (import comidas+agua, sin pesos) */}
+      <Card
+        elevation={0}
+        sx={{ border: "1px solid", borderColor: "primary.main", cursor: "pointer" }}
+        onClick={() => setOpenImport(true)}
+      >
+        <CardContent sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5, "&:last-child": { pb: 2 } }}>
+          <Button
+            variant="contained"
+            startIcon={<UploadFile />}
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenImport(true);
+            }}
+          >
+            Ponerme al día
+          </Button>
+          <Box flex={1} minWidth={0}>
+            <Typography variant="caption" color="text.secondary">
+              Importa comidas y agua de días atrasados
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+
       {/* Acceso a Bases de Keto */}
       <Card
         elevation={0}
@@ -442,6 +480,13 @@ export default function InicioPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo: Ponerme al día */}
+      <UserImportDialog
+        open={openImport}
+        onClose={() => setOpenImport(false)}
+        onImported={reload}
+      />
     </Box>
   );
 }

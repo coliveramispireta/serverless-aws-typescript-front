@@ -1,5 +1,6 @@
 "use client";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import {
   Avatar,
   Box,
@@ -23,12 +24,16 @@ import {
   Share as ShareIcon,
 } from "@mui/icons-material";
 import { shareAchievement } from "@/services/keto/achievements.service";
+import AchievementShareCard from "./achievementsharecard";
 
 export interface ShareableAchievement {
   codigo: string;
   titulo: string;
   descripcion?: string;
   emoji: string;
+  progreso?: { actual: number; meta: number } | null;
+  nombre?: string;
+  fecha?: string;
 }
 
 interface ShareAchievementDialogProps {
@@ -77,6 +82,8 @@ export default function ShareAchievementDialog({
   const [copied, setCopied] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [buildingImage, setBuildingImage] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -85,6 +92,7 @@ export default function ShareAchievementDialog({
       setCopied(false);
       setMoreOpen(false);
       setError(null);
+      setBuildingImage(false);
     }
   }, [open, alreadyPublished]);
 
@@ -94,10 +102,70 @@ export default function ShareAchievementDialog({
   const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
   const fullText = `${shareText}\n${shareUrl}`;
 
+  const cardData = {
+    emoji: achievement.emoji,
+    titulo: achievement.titulo,
+    descripcion: achievement.descripcion,
+    progreso: achievement.progreso ?? null,
+    nombre: achievement.nombre,
+    fecha: achievement.fecha,
+  };
+
   const canSystemShare =
     typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   const openUrl = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
+
+  /** Genera el PNG del card visual del logro (html-to-image). */
+  const buildCardPng = async (): Promise<Blob | null> => {
+    if (!cardRef.current) return null;
+    try {
+      setBuildingImage(true);
+      const dataUrl = await toPng(cardRef.current, {
+        pixelRatio: 1,
+        cacheBust: true,
+        width: cardRef.current.offsetWidth,
+        height: cardRef.current.offsetHeight,
+      });
+      return await (await fetch(dataUrl)).blob();
+    } finally {
+      setBuildingImage(false);
+    }
+  };
+
+  /** Comparte la imagen del logro por WhatsApp (o descarga como respaldo). */
+  const handleWhatsAppImage = async () => {
+    const blob = await buildCardPng();
+    if (!blob) return;
+
+    const canFiles =
+      typeof navigator !== "undefined" &&
+      navigator.canShare &&
+      navigator.canShare({ files: [new File([blob], "logro.png", { type: "image/png" })] });
+
+    if (canFiles && canSystemShare) {
+      try {
+        await navigator.share({
+          title: achievement.titulo,
+          text: shareText,
+          files: [new File([blob], "logro-keto.png", { type: "image/png" })],
+        });
+        return;
+      } catch {
+        // El usuario canceló → se cae a guardar imagen
+      }
+    }
+
+    // Respaldo: descargar la imagen
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "logro-keto.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const handlePublish = async () => {
     if (publishing || published) return;
@@ -151,103 +219,120 @@ export default function ShareAchievementDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pr: 1 }}>
-        <Box display="flex" alignItems="center" gap={1}>
-          <EmojiEvents color="primary" />
-          <Typography fontWeight={800}>Compartir logro</Typography>
-        </Box>
-        <IconButton onClick={onClose} size="small" aria-label="Cerrar">
-          <Close />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent sx={{ pt: 0 }}>
-        {/* Vista previa de lo que se compartirá */}
-        <Box
-          sx={{
-            p: 1.5,
-            borderRadius: 3,
-            bgcolor: "AMUltraLightBlue.main",
-            border: "1px solid",
-            borderColor: "AMSnowGray.main",
-            mb: 2,
-          }}
-        >
-          <Typography fontSize={28} lineHeight={1}>
-            {achievement.emoji}
-          </Typography>
-          <Typography fontWeight={700} mt={0.5}>
-            {achievement.titulo}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-line", mt: 0.5 }}>
-            {shareText}
-          </Typography>
-        </Box>
+    <>
+      {/* Nodo oculto para generar la imagen PNG del logro */}
+      <Box
+        ref={cardRef}
+        sx={{
+          position: "fixed",
+          left: -9999,
+          top: 0,
+          width: 1080,
+          height: 1080,
+          zIndex: -1,
+          pointerEvents: "none",
+          opacity: 1,
+        }}
+      >
+        <AchievementShareCard data={cardData} />
+      </Box>
 
-        {/* Publicar en la comunidad (muro del grupo) */}
-        <Button
-          fullWidth
-          variant="contained"
-          startIcon={published ? <Check /> : <Groups />}
-          disabled={publishing || published}
-          onClick={handlePublish}
-          sx={{ py: 1.1, textTransform: "none" }}
-        >
-          {publishing ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
-          {published ? "✓ Publicado en la comunidad" : "Publicar en la comunidad"}
-        </Button>
-        <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
-          Aparecerá en el muro de la comunidad del grupo.
-        </Typography>
-
-        {error && (
-          <Typography variant="caption" color="error" display="block" mt={1}>
-            {error}
-          </Typography>
-        )}
-
-        <Divider sx={{ my: 1.5 }} />
-        <Typography variant="caption" color="text.secondary" fontWeight={700}>
-          Compartir en
-        </Typography>
-
-        {/* WhatsApp / Facebook / Otras redes */}
-        <Box display="flex" gap={1} mt={1}>
+      <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pr: 1 }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <EmojiEvents color="primary" />
+            <Typography fontWeight={800}>Compartir logro</Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small" aria-label="Cerrar">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 0 }}>
+          {/* Vista previa visual del logro */}
           <Box
-            flex={1}
-            textAlign="center"
-            onClick={() => openUrl(`https://wa.me/?text=${encodeURIComponent(fullText)}`)}
-            sx={{ cursor: "pointer" }}
+            sx={{
+              borderRadius: 3,
+              overflow: "hidden",
+              mb: 2,
+              border: "1px solid",
+              borderColor: "AMSnowGray.main",
+              aspectRatio: "1 / 1",
+              maxHeight: 240,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(160deg, #0d9488 0%, #134e4a 45%, #0f172a 100%)",
+            }}
           >
-            <BrandCircle bg="#25D366">W</BrandCircle>
-            <Typography variant="caption" display="block" mt={0.5}>
-              WhatsApp
-            </Typography>
+            <AchievementShareCard data={cardData} compact />
           </Box>
-          <Box
-            flex={1}
-            textAlign="center"
-            onClick={() =>
-              openUrl(
-                `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`
-              )
-            }
-            sx={{ cursor: "pointer" }}
+
+          {/* Publicar en la comunidad (muro del grupo) */}
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={published ? <Check /> : <Groups />}
+            disabled={publishing || published}
+            onClick={handlePublish}
+            sx={{ py: 1.1, textTransform: "none" }}
           >
-            <BrandCircle bg="#1877F2">f</BrandCircle>
-            <Typography variant="caption" display="block" mt={0.5}>
-              Facebook
+            {publishing ? <CircularProgress size={18} color="inherit" sx={{ mr: 1 }} /> : null}
+            {published ? "✓ Publicado en la comunidad" : "Publicar en la comunidad"}
+          </Button>
+          <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+            Aparecerá en el muro de la comunidad del grupo.
+          </Typography>
+
+          {error && (
+            <Typography variant="caption" color="error" display="block" mt={1}>
+              {error}
             </Typography>
+          )}
+
+          <Divider sx={{ my: 1.5 }} />
+          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+            Compartir en
+          </Typography>
+
+          {/* WhatsApp (imagen) / Facebook / Otras redes */}
+          <Box display="flex" gap={1} mt={1}>
+            <Box
+              flex={1}
+              textAlign="center"
+              onClick={handleWhatsAppImage}
+              sx={{ cursor: "pointer" }}
+            >
+              <BrandCircle bg="#25D366">
+                {buildingImage ? <CircularProgress size={16} color="inherit" /> : "W"}
+              </BrandCircle>
+              <Typography variant="caption" display="block" mt={0.5}>
+                WhatsApp
+              </Typography>
+            </Box>
+            <Box
+              flex={1}
+              textAlign="center"
+              onClick={() =>
+                openUrl(
+                  `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`
+                )
+              }
+              sx={{ cursor: "pointer" }}
+            >
+              <BrandCircle bg="#1877F2">f</BrandCircle>
+              <Typography variant="caption" display="block" mt={0.5}>
+                Facebook
+              </Typography>
+            </Box>
+            <Box flex={1} textAlign="center" onClick={handleSystemShare} sx={{ cursor: "pointer" }}>
+              <BrandCircle bg="#7c3aed">
+                <ShareIcon sx={{ fontSize: 18 }} />
+              </BrandCircle>
+              <Typography variant="caption" display="block" mt={0.5}>
+                Otras redes
+              </Typography>
+            </Box>
           </Box>
-          <Box flex={1} textAlign="center" onClick={handleSystemShare} sx={{ cursor: "pointer" }}>
-            <BrandCircle bg="#7c3aed">
-              <ShareIcon sx={{ fontSize: 18 }} />
-            </BrandCircle>
-            <Typography variant="caption" display="block" mt={0.5}>
-              Otras redes
-            </Typography>
-          </Box>
-        </Box>
 
         {!moreOpen && (
           <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
@@ -317,6 +402,7 @@ export default function ShareAchievementDialog({
           </Box>
         </Collapse>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }

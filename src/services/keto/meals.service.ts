@@ -26,8 +26,24 @@ export const deleteMeal = async (mealId: string): Promise<void> => {
 export const createMealBlock = async (block: {
   fechaHora: string;
   comida?: string;
+  nota?: string;
   alimentos: Array<{ foodId: string; cantidad: number }>;
 }): Promise<{ imported: number }> => {
   const response = await axiosInstanceLambda.post("/meals/block", block);
+  return response.data;
+};
+
+/** Importar comidas y líquidos retroactivos del usuario (ponerse al día, SIN pesos) */
+export const importUserData = async (payload: {
+  meals: Array<{
+    fechaHora: string;
+    alimento: string;
+    gramos: number;
+    comida?: string;
+    nota?: string;
+  }>;
+  liquids: Array<{ fechaHora: string; cantidadMl: number; nota?: string }>;
+}): Promise<{ imported: { meals: number; liquids: number } }> => {
+  const response = await axiosInstanceLambda.post("/me/import", payload);
   return response.data;
 };

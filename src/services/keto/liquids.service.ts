@@ -8,11 +8,16 @@ export const listLiquids = async (fecha?: string): Promise<LiquidEntry[]> => {
   return response.data;
 };
 
-/** Registrar líquido */
+/** Registrar líquido (opcional fechaHora para registrar agua de otros días, y nota) */
 export const createLiquid = async (
   cantidadMl: number,
+  opts?: { fechaHora?: string; nota?: string },
 ): Promise<LiquidEntry> => {
-  const response = await axiosInstanceLambda.post("/liquids", { cantidadMl });
+  const response = await axiosInstanceLambda.post("/liquids", {
+    cantidadMl,
+    fechaHora: opts?.fechaHora,
+    nota: opts?.nota,
+  });
   return response.data;
 };
 

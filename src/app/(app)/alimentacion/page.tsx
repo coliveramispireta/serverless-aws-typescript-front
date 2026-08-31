@@ -1,61 +1,42 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Autocomplete,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Fab,
   IconButton,
   LinearProgress,
   Tab,
   Tabs,
-  TextField as MuiTextField,
   Typography,
 } from "@mui/material";
-import { Add, Delete, WaterDrop } from "@mui/icons-material";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import dayjs, { Dayjs } from "dayjs";
+import { Add, Delete, UploadFile, WaterDrop } from "@mui/icons-material";
+import dayjs from "dayjs";
 
 import EmptyState from "@/components/ui/emptystate";
 import SectionHeader from "@/components/ui/sectionheader";
+import MealEntryDialog from "@/components/ui/mealentrydialog";
+import WaterIntakeControl from "@/components/ui/waterintakecontrol";
+import UserImportDialog from "@/components/ui/userimportdialog";
 import useUserData from "@/hooks/useuserdata";
 import { createMealBlock, deleteMeal } from "@/services/keto/meals.service";
 import { listFoods } from "@/services/keto/foods.service";
-import {
-  listLiquids,
-  createLiquid,
-  deleteLiquid,
-} from "@/services/keto/liquids.service";
+import { listLiquids, createLiquid, deleteLiquid } from "@/services/keto/liquids.service";
 import { MealEntry, FoodItem, LiquidEntry } from "@/model/keto.models";
+
+type MealType = "desayuno" | "almuerzo" | "cena" | "snack";
 
 // ─── Constantes ───────────────────────────────────────────────
 
-const COMIDAS: { value: NonNullable<MealEntry["comida"]>; label: string; emoji: string }[] = [
+const COMIDAS: { value: MealType; label: string; emoji: string }[] = [
   { value: "desayuno", label: "Desayuno", emoji: "🌅" },
   { value: "almuerzo", label: "Almuerzo", emoji: "☀️" },
   { value: "cena", label: "Cena", emoji: "🌙" },
   { value: "snack", label: "Snack", emoji: "🥜" },
 ];
-
-const QUICK_LIQUIDS = [250, 500, 750, 1000];
-
-// ─── Tipos ────────────────────────────────────────────────────
-
-interface MealAlimento {
-  foodId: string;
-  nombre: string;
-  cantidad: number;
-  unidad: string;
-  equivalenciaGramos?: number;
-}
 
 // ─── Componente ───────────────────────────────────────────────
 
@@ -67,9 +48,6 @@ export default function AlimentacionPage() {
   const [openMeal, setOpenMeal] = useState(false);
   const [savingMeal, setSavingMeal] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [comida, setComida] = useState<NonNullable<MealEntry["comida"]>>("desayuno");
-  const [fechaHora, setFechaHora] = useState<Dayjs>(dayjs());
-  const [alimentos, setAlimentos] = useState<MealAlimento[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // ─── Estado: Catálogo ───
@@ -79,7 +57,12 @@ export default function AlimentacionPage() {
   // ─── Estado: Líquidos ───
   const [liquids, setLiquids] = useState<LiquidEntry[]>([]);
   const [liquidsLoading, setLiquidsLoading] = useState(false);
-  const [addingLiquid, setAddingLiquid] = useState(false);
+  const [savingLiquid, setSavingLiquid] = useState(false);
+  // Ronda actual del control gota (se reinicia al montar); sirve de tope visual de 3L
+  const [roundMl, setRoundMl] = useState(0);
+
+  // ─── Estado: Import / ponerse al día ───
+  const [openImport, setOpenImport] = useState(false);
 
   // Cargar catálogo al abrir modal de comida
   useEffect(() => {
@@ -93,19 +76,7 @@ export default function AlimentacionPage() {
     }
   }, [openMeal, foodsLoaded]);
 
-  // Catálogo ordenado: keto primero (alfabético) y "no KETO" al final
-  const sortedFoods = useMemo(() => {
-    const keto: FoodItem[] = [];
-    const nonKeto: FoodItem[] = [];
-    for (const f of foods) {
-      (f.categoria === "no_keto" ? nonKeto : keto).push(f);
-    }
-    const byName = (a: FoodItem, b: FoodItem) => a.nombre.localeCompare(b.nombre, "es");
-    return [...keto.sort(byName), ...nonKeto.sort(byName)];
-  }, [foods]);
-
-  // Cargar líquidos al cambiar a pestaña 1 (filtro por día LOCAL en el cliente:
-  // el backend guarda UTC, por eso no se filtra con ?fecha= del servidor)
+  // Cargar líquidos de HOY (filtro por día LOCAL en el cliente; el backend guarda UTC)
   const loadLiquids = useCallback(() => {
     if (tab !== 1) return;
     setLiquidsLoading(true);
@@ -139,17 +110,6 @@ export default function AlimentacionPage() {
     );
   }, [meals]);
 
-  // ─── Comidas: totales ───
-  const totalGramos = useMemo(
-    () => alimentos.reduce((sum, a) => {
-      if (a.unidad === "und" && a.equivalenciaGramos) {
-        return sum + Math.round(a.cantidad * a.equivalenciaGramos);
-      }
-      return sum + Math.round(a.cantidad);
-    }, 0),
-    [alimentos],
-  );
-
   // ─── Líquidos: total del día ───
   const totalMl = useMemo(
     () => liquids.reduce((sum, l) => sum + l.cantidadMl, 0),
@@ -157,54 +117,21 @@ export default function AlimentacionPage() {
   );
 
   // ─── Handlers: Comidas ───
-  const addAlimento = () => {
-    setAlimentos((prev) => [
-      ...prev,
-      { foodId: "", nombre: "", cantidad: 0, unidad: "g" },
-    ]);
-  };
-
-  const updateAlimento = (index: number, food: FoodItem | null) => {
-    if (!food) return;
-    setAlimentos((prev) =>
-      prev.map((a, i) =>
-        i === index
-          ? { ...a, foodId: food.foodId, nombre: food.nombre, unidad: food.unidad, equivalenciaGramos: food.equivalenciaGramos }
-          : a,
-      ),
-    );
-  };
-
-  const updateCantidad = (index: number, cantidad: number) => {
-    setAlimentos((prev) =>
-      prev.map((a, i) => (i === index ? { ...a, cantidad } : a)),
-    );
-  };
-
-  const removeAlimento = (index: number) => {
-    setAlimentos((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const canSaveMeal =
-    alimentos.length > 0 &&
-    alimentos.every((a) => a.foodId && a.cantidad > 0);
-
-  const handleSaveMeal = async () => {
+  const handleSaveMeal = async (payload: {
+    fechaHora: string;
+    comida: MealType;
+    nota?: string;
+    alimentos: Array<{ foodId: string; cantidad: number }>;
+  }) => {
     setSavingMeal(true);
     setSaveError(null);
     try {
       await createMealBlock({
-        fechaHora: fechaHora.toISOString(),
-        comida,
-        alimentos: alimentos.map((a) => ({
-          foodId: a.foodId,
-          cantidad: a.cantidad,
-        })),
+        fechaHora: payload.fechaHora,
+        comida: payload.comida,
+        nota: payload.nota,
+        alimentos: payload.alimentos,
       });
-      // Reset
-      setAlimentos([]);
-      setComida("desayuno");
-      setFechaHora(dayjs());
       setOpenMeal(false);
       reload();
     } catch (err) {
@@ -228,15 +155,36 @@ export default function AlimentacionPage() {
   };
 
   // ─── Handlers: Líquidos ───
-  const handleAddLiquid = async (ml: number) => {
-    setAddingLiquid(true);
+  const handleAddLiquid = async (
+    ml: number,
+    opts?: { fechaHora?: string; nota?: string },
+  ) => {
+    setSavingLiquid(true);
     try {
-      await createLiquid(ml);
+      await createLiquid(ml, opts);
+      setRoundMl((r) => r + ml);
       loadLiquids();
     } catch (err) {
       console.error(err);
     } finally {
-      setAddingLiquid(false);
+      setSavingLiquid(false);
+    }
+  };
+
+  const handleRemoveLastLiquid = async () => {
+    if (liquids.length === 0) return;
+    const last = [...liquids].sort(
+      (a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime(),
+    )[0];
+    setSavingLiquid(true);
+    try {
+      await deleteLiquid(last.id);
+      setRoundMl((r) => Math.max(0, r - last.cantidadMl));
+      loadLiquids();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingLiquid(false);
     }
   };
 
@@ -285,6 +233,18 @@ export default function AlimentacionPage() {
         />
       </Tabs>
 
+      {/* Botón "Ponerme al día" (import comidas+agua, sin pesos) */}
+      <Box display="flex" justifyContent="flex-start" mb={1}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<UploadFile />}
+          onClick={() => setOpenImport(true)}
+        >
+          Ponerme al día (importar días atrasados)
+        </Button>
+      </Box>
+
       {/* ─── Pestaña: Comidas ─── */}
       {tab === 0 && (
         <>
@@ -300,7 +260,7 @@ export default function AlimentacionPage() {
             <EmptyState
               emoji="🍽️"
               title="Aún no registras alimentos"
-              description='Toca "+" para registrar tu primera comida.'
+              description='Toca "+" para registrar tu primera comida, o usa "Ponerme al día" para cargar días atrasados.'
               actionLabel="Agregar comida"
               onAction={() => setOpenMeal(true)}
             />
@@ -344,6 +304,7 @@ export default function AlimentacionPage() {
                               <Typography variant="caption" color="text.secondary">
                                 {meal.gramos} g · {dayjs(meal.fechaHora).format("HH:mm")}
                                 {comidaInfo ? ` · ${comidaInfo.label.toLowerCase()}` : ""}
+                                {meal.nota ? ` · 📝 ${meal.nota}` : ""}
                               </Typography>
                             </Box>
                             <IconButton
@@ -378,19 +339,21 @@ export default function AlimentacionPage() {
       {/* ─── Pestaña: Líquidos ─── */}
       {tab === 1 && (
         <Box>
+          {/* Control gota +/− */}
+          <WaterIntakeControl
+            roundMl={roundMl}
+            saving={savingLiquid}
+            onCreate={handleAddLiquid}
+            onRemoveLast={handleRemoveLastLiquid}
+            canRemoveLast={liquids.length > 0}
+          />
+
           {/* Resumen del día */}
           <Card
             elevation={0}
-            sx={{
-              border: "1px solid",
-              borderColor: "info.main",
-              mb: 2,
-              textAlign: "center",
-              py: 3,
-            }}
+            sx={{ border: "1px solid", borderColor: "info.main", mb: 2, textAlign: "center", py: 2 }}
           >
-            <WaterDrop sx={{ fontSize: 40, color: "info.main", mb: 0.5 }} />
-            <Typography variant="h4" fontWeight={800} color="info.main">
+            <Typography variant="h5" fontWeight={800} color="info.main">
               {totalMl} ml
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -398,32 +361,17 @@ export default function AlimentacionPage() {
             </Typography>
           </Card>
 
-          {/* Botones de acceso rápido */}
+          {/* Lista de registros de hoy */}
           <Typography variant="caption" color="text.secondary" mb={1} display="block">
-            Registro rápido:
+            Registros de hoy
           </Typography>
-          <Box display="flex" gap={1} mb={2} flexWrap="wrap">
-            {QUICK_LIQUIDS.map((ml) => (
-              <Button
-                key={ml}
-                variant="outlined"
-                size="small"
-                disabled={addingLiquid}
-                onClick={() => handleAddLiquid(ml)}
-              >
-                {ml >= 1000 ? `${ml / 1000} L` : `${ml} ml`}
-              </Button>
-            ))}
-          </Box>
-
-          {/* Lista de registros */}
           {liquidsLoading ? (
             <LinearProgress sx={{ borderRadius: 4 }} />
           ) : liquids.length === 0 ? (
             <EmptyState
               emoji="💧"
-              title="Sin registros de hidratación"
-              description="Usa los botones de arriba para registrar cuánto has bebido hoy."
+              title="Sin registros de hidratación hoy"
+              description='Usa la gota de arriba: toca "+" para agregar agua. También puedes elegir fecha/hora pasada para ponerte al día.'
             />
           ) : (
             <Box display="flex" flexDirection="column" gap={1}>
@@ -446,10 +394,14 @@ export default function AlimentacionPage() {
                     >
                       <WaterDrop sx={{ color: "info.main" }} />
                       <Box flex={1}>
-                        <Typography fontWeight={700}>{l.cantidadMl} ml</Typography>
+                        <Typography fontWeight={700}>
+                          {l.cantidadMl >= 1000
+                            ? `${l.cantidadMl / 1000} L`
+                            : `${l.cantidadMl} ml`}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {dayjs(l.fechaHora).format("HH:mm")}
-                          {l.nota ? ` · ${l.nota}` : ""}
+                          {l.nota ? ` · 📝 ${l.nota}` : ""}
                         </Typography>
                       </Box>
                       <IconButton
@@ -467,143 +419,28 @@ export default function AlimentacionPage() {
         </Box>
       )}
 
-      {/* ─── Modal: Nueva comida ─── */}
-      <Dialog open={openMeal} onClose={() => setOpenMeal(false)} fullWidth maxWidth="sm">
-        <DialogTitle fontWeight={800}>Nueva comida</DialogTitle>
-        <DialogContent>
-          {/* Tipo de comida */}
-          <Typography variant="caption" color="text.secondary">
-            Tipo
-          </Typography>
-          <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.5} mb={2}>
-            {COMIDAS.map((c) => (
-              <Chip
-                key={c.value}
-                label={`${c.emoji} ${c.label}`}
-                clickable
-                color={comida === c.value ? "primary" : "default"}
-                variant={comida === c.value ? "filled" : "outlined"}
-                onClick={() => setComida(c.value)}
-                size="small"
-              />
-            ))}
-          </Box>
+      {/* ─── Diálogo: Nueva comida ─── */}
+      <MealEntryDialog
+        open={openMeal}
+        foods={foods}
+        saving={savingMeal}
+        error={saveError}
+        onClose={() => {
+          setOpenMeal(false);
+          setSaveError(null);
+        }}
+        onSave={handleSaveMeal}
+      />
 
-          {/* Fecha y hora */}
-          <Box mb={2}>
-            <DateTimePicker
-              label="Fecha y hora"
-              value={fechaHora}
-              onChange={(v) => setFechaHora(v ?? dayjs())}
-              ampm={false}
-              slotProps={{ textField: { fullWidth: true, size: "small" } }}
-            />
-          </Box>
-
-          {/* Lista de alimentos */}
-          <Typography variant="caption" color="text.secondary" fontWeight={700}>
-            Alimentos
-          </Typography>
-          <Box mt={0.5} mb={1}>
-            {alimentos.map((item, index) => (
-              <Box key={index} display="flex" gap={1} alignItems="center" mb={1}>
-                <Autocomplete
-                  options={sortedFoods}
-                  getOptionLabel={(o) => o.nombre}
-                  isOptionEqualToValue={(o, v) => o.foodId === v.foodId}
-                  value={foods.find((f) => f.foodId === item.foodId) ?? null}
-                  onChange={(_, newValue) => updateAlimento(index, newValue)}
-                  size="small"
-                  sx={{ flex: 2 }}
-                  renderOption={(props, option) => (
-                    <li {...props} key={option.foodId}>
-                      {option.nombre}
-                      {option.categoria === "no_keto" && (
-                        <Typography
-                          component="span"
-                          variant="caption"
-                          color="error"
-                          fontWeight={700}
-                          sx={{ ml: 1 }}
-                        >
-                          (no KETO)
-                        </Typography>
-                      )}
-                    </li>
-                  )}
-                  renderInput={(params) => (
-                    <MuiTextField {...params} placeholder="Buscar alimento..." />
-                  )}
-                />
-                <MuiTextField
-                  size="small"
-                  type="number"
-                  placeholder="Cant."
-                  value={item.cantidad || ""}
-                  onChange={(e) => updateCantidad(index, Number(e.target.value))}
-                  inputProps={{ min: 0, step: 1 }}
-                  sx={{ flex: 0.8 }}
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 24 }}>
-                  {item.unidad}
-                </Typography>
-                <IconButton size="small" color="error" onClick={() => removeAlimento(index)}>
-                  <Delete fontSize="small" />
-                </IconButton>
-              </Box>
-            ))}
-            <Button
-              startIcon={<Add />}
-              onClick={addAlimento}
-              size="small"
-              sx={{ mt: 0.5 }}
-            >
-              Agregar alimento
-            </Button>
-          </Box>
-
-          {/* Resumen */}
-          {alimentos.length > 0 && (
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              sx={{ bgcolor: "grey.50", p: 1.5, borderRadius: 1 }}
-            >
-              <Typography variant="body2" color="text.secondary">
-                {alimentos.length} alimento{alimentos.length !== 1 ? "s" : ""}
-              </Typography>
-              <Typography variant="body2" fontWeight={700}>
-                {totalGramos} g totales
-              </Typography>
-            </Box>
-          )}
-
-          {saveError && (
-            <Typography variant="caption" color="error" mt={2} display="block">
-              ⚠️ {saveError}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            onClick={() => {
-              setOpenMeal(false);
-              setAlimentos([]);
-              setSaveError(null);
-            }}
-            color="inherit"
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            disabled={!canSaveMeal || savingMeal}
-            onClick={handleSaveMeal}
-          >
-            {savingMeal ? "Guardando..." : "Guardar comida"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* ─── Diálogo: Ponerme al día (import) ─── */}
+      <UserImportDialog
+        open={openImport}
+        onClose={() => setOpenImport(false)}
+        onImported={() => {
+          reload();
+          loadLiquids();
+        }}
+      />
     </Box>
   );
 }

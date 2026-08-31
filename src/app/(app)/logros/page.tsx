@@ -2,23 +2,31 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Button,
-  Card,
-  CardContent,
   Chip,
   Grid,
   LinearProgress,
+  Tabs,
+  Tab,
   Typography,
 } from "@mui/material";
-import { Share } from "@mui/icons-material";
 
 import EmptyState from "@/components/ui/emptystate";
 import SectionHeader from "@/components/ui/sectionheader";
 import SourceBadge from "@/components/ui/sourcebadge";
+import AchievementCard from "@/components/ui/achievementcard";
 import ShareAchievementDialog, { ShareableAchievement } from "@/components/ui/shareachievementdialog";
 import useUserData from "@/hooks/useuserdata";
-import { ACHIEVEMENT_RULES } from "@/lib/engine/achievements";
-import { computeMetrics } from "@/lib/engine/metrics";
+import {
+  ACHIEVEMENT_RULES,
+  AchievementContext,
+  AchievementType,
+} from "@/lib/engine/achievements";
+import {
+  computeHydrationStats,
+  computeMetrics,
+  computeNutritionStats,
+  KetoMetrics,
+} from "@/lib/engine/metrics";
 import { getProfilePrefs } from "@/lib/profileprefs";
 import { Achievement } from "@/model/keto.models";
 import { listAchievements } from "@/services/keto/achievements.service";
@@ -26,17 +34,19 @@ import { getUserInfo } from "@/services/xstorage.cross.service";
 
 /**
  * Mis logros: combina logros automáticos (evaluados por el motor del
- * frontend) con los otorgados por el coach. Cada tarjeta indica su origen.
+ * frontend) con los otorgados por el coach. Cada tarjeta indica su origen
+ * y muestra la barra de progreso + explicación aunque esté bloqueado.
  */
 export default function LogrosPage() {
   const userInfo = getUserInfo();
   const prefs = getProfilePrefs();
-  const { weights, meals, loading, error, reload } = useUserData();
+  const { weights, meals, liquids, loading, error, reload } = useUserData();
   const [coachAchievements, setCoachAchievements] = useState<Achievement[]>([]);
   const [coachError, setCoachError] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState<ShareableAchievement | null>(null);
   const [publishedCodes, setPublishedCodes] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<"todos" | AchievementType>("todos");
 
   useEffect(() => {
     listAchievements()
@@ -44,21 +54,35 @@ export default function LogrosPage() {
       .catch(() => setCoachError(true));
   }, []);
 
-  // Métricas y estado de cada regla automática
+  // Métricas y contexto completo para evaluar reglas automáticas
   const metrics = useMemo(() => computeMetrics(weights, meals, prefs), [weights, meals, prefs]);
+  const nutrition = useMemo(() => computeNutritionStats(meals), [meals]);
+  const hydration = useMemo(
+    () => computeHydrationStats(liquids, metrics.pesoActual, prefs.alturaCm),
+    [liquids, metrics.pesoActual, prefs.alturaCm]
+  );
+
+  const context: AchievementContext = useMemo(
+    () => ({ metrics, weights, meals, liquids, nutrition, hydration }),
+    [metrics, weights, meals, liquids, nutrition, hydration]
+  );
 
   const autoStatus = useMemo(() => {
     return ACHIEVEMENT_RULES.map((rule) => {
-      const earned = rule.cond(metrics, weights, meals);
-      return { ...rule, earned };
+      const earned = rule.cond(context);
+      const progreso = rule.progreso ? rule.progreso(context) : null;
+      return { ...rule, earned, progreso };
     });
-  }, [metrics, weights, meals]);
+  }, [context]);
+
+  const visibleAuto =
+    tab === "todos" ? autoStatus : autoStatus.filter((a) => a.tipo === tab);
 
   const totalUnlocked =
     autoStatus.filter((a) => a.earned).length + coachAchievements.length;
 
   const openShare = (achievement: ShareableAchievement) => {
-    setShareTarget(achievement);
+    setShareTarget({ ...achievement, nombre: userInfo.userName });
     setShareOpen(true);
   };
 
@@ -81,6 +105,14 @@ export default function LogrosPage() {
     );
   }
 
+  const TABS: { value: "todos" | AchievementType; label: string }[] = [
+    { value: "todos", label: "Todos" },
+    { value: "peso", label: "⚖️ Peso" },
+    { value: "hidratacion", label: "💧 Agua" },
+    { value: "alimentacion", label: "🍽️ Keto" },
+    { value: "consistencia", label: "📅 Constancia" },
+  ];
+
   return (
     <Box>
       <SectionHeader
@@ -88,58 +120,42 @@ export default function LogrosPage() {
         subtitle={`${totalUnlocked} ${totalUnlocked === 1 ? "logro obtenido" : "logros obtenidos"} 🎉`}
       />
 
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        variant="scrollable"
+        scrollButtons="auto"
+        sx={{ mb: 2, "& .MuiTab-root": { textTransform: "none", minHeight: 40 } }}
+      >
+        {TABS.map((t) => (
+          <Tab key={t.value} value={t.value} label={t.label} />
+        ))}
+      </Tabs>
+
       {/* Logros automáticos */}
       <Grid container spacing={1.5}>
-        {autoStatus.map((a) => (
+        {visibleAuto.map((a) => (
           <Grid item xs={12} sm={6} key={a.codigo}>
-            <Card
-              elevation={0}
-              sx={{
-                border: "1px solid",
-                borderColor: a.earned ? "primary.main" : "AMSnowGray.main",
-                bgcolor: a.earned ? "AMUltraLightBlue.main" : "background.paper",
-                opacity: a.earned ? 1 : 0.65,
-                height: "100%",
-              }}
-            >
-              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
-                  <Typography fontSize={30}>{a.emoji}</Typography>
-                  <SourceBadge source="auto" />
-                </Box>
-                <Typography fontWeight={800} mt={1}>
-                  {a.titulo}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {a.descripcion}
-                </Typography>
-                <Box mt={1.5}>
-                  {a.earned ? (
-                    <>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<Share />}
-                        onClick={() => openShare({ codigo: a.codigo, titulo: a.titulo, descripcion: a.descripcion, emoji: a.emoji })}
-                      >
-                        Compartir
-                      </Button>
-                      {publishedCodes.has(a.codigo) && (
-                        <Chip
-                          size="small"
-                          color="success"
-                          variant="outlined"
-                          label="✓ En el muro"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <Chip size="small" label="Bloqueado 🔒" variant="outlined" />
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
+            <AchievementCard
+              emoji={a.emoji}
+              titulo={a.titulo}
+              descripcion={a.descripcion}
+              explicacion={a.explicacion}
+              tipo={a.tipo}
+              earned={a.earned}
+              progreso={a.progreso}
+              published={publishedCodes.has(a.codigo)}
+              sourceBadge={<SourceBadge source="auto" />}
+              onShare={(s) =>
+                openShare({
+                  codigo: a.codigo,
+                  titulo: a.titulo,
+                  descripcion: a.descripcion,
+                  emoji: a.emoji,
+                  progreso: a.progreso,
+                })
+              }
+            />
           </Grid>
         ))}
       </Grid>
@@ -151,40 +167,22 @@ export default function LogrosPage() {
           <Grid container spacing={1.5}>
             {coachAchievements.map((a) => (
               <Grid item xs={12} sm={6} key={a.id}>
-                <Card elevation={0} sx={{ border: "2px solid", borderColor: "secondary.main", height: "100%" }}>
-                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
-                      <Typography fontSize={30}>{a.emoji}</Typography>
-                      <SourceBadge source="coach" />
-                    </Box>
-                    <Typography fontWeight={800} mt={1}>
-                      {a.titulo}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {a.descripcion}
-                    </Typography>
-                    <Box mt={1.5}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<Share />}
-                        onClick={() => openShare({ codigo: a.codigo, titulo: a.titulo, descripcion: a.descripcion, emoji: a.emoji })}
-                      >
-                        Compartir
-                      </Button>
-                      {publishedCodes.has(a.codigo) && (
-                        <Chip
-                          size="small"
-                          color="success"
-                          variant="outlined"
-                          label="✓ En el muro"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </Box>
-                  </CardContent>
-                </Card>
+                <AchievementCard
+                  emoji={a.emoji}
+                  titulo={a.titulo}
+                  descripcion={a.descripcion}
+                  earned
+                  published={publishedCodes.has(a.codigo)}
+                  sourceBadge={<SourceBadge source="coach" />}
+                  onShare={(s) =>
+                    openShare({
+                      codigo: a.codigo,
+                      titulo: a.titulo,
+                      descripcion: a.descripcion,
+                      emoji: a.emoji,
+                    })
+                  }
+                />
               </Grid>
             ))}
           </Grid>

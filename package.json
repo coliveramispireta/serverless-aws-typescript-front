@@ -48,6 +48,7 @@
     "exceljs": "^4.4.0",
     "hamburger-react": "^2.5.0",
     "highlight.js": "^11.11.1",
+    "html-to-image": "^1.11.13",
     "jsqr": "^1.4.0",
     "next": "^14.2.7",
     "next-intl": "^3.17.2",
