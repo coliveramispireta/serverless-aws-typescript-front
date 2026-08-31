@@ -14,13 +14,13 @@ import {
   TextField as MuiTextField,
   Typography,
 } from "@mui/material";
-import { Add, Delete, Star, StarBorder } from "@mui/icons-material";
+import { Add, Delete, Remove, Search, Star, StarBorder } from "@mui/icons-material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import dayjs, { Dayjs } from "dayjs";
 
-import { FoodItem } from "@/model/keto.models";
+import { FoodItem, FoodCategory } from "@/model/keto.models";
 import {
   getFavoriteFoodIds,
   getRecentFoodIds,
@@ -28,6 +28,14 @@ import {
   addToFavorites,
   removeFromFavorites,
 } from "@/lib/engine/foodPrefs";
+import { CATEGORY_ORDER, CAT_INFO, FOOD_FALLBACK_EMOJI } from "@/lib/engine/categories";
+import {
+  defaultServing,
+  adjustCantidad,
+  stepFor,
+  servingMin,
+  servingMax,
+} from "@/lib/engine/servings";
 
 type MealType = "desayuno" | "almuerzo" | "cena" | "snack";
 
@@ -37,6 +45,7 @@ interface MealAlimento {
   cantidad: number;
   unidad: string;
   equivalenciaGramos?: number;
+  emoji?: string;
 }
 
 const COMIDAS: { value: MealType; label: string; emoji: string }[] = [
@@ -73,6 +82,8 @@ export default function MealEntryDialog({
   const [nota, setNota] = useState("");
   const [alimentos, setAlimentos] = useState<MealAlimento[]>([]);
   const [catFilter, setCatFilter] = useState<string>("");
+  const [search, setSearch] = useState("");
+  const [openSearchCombo, setOpenSearchCombo] = useState(false);
 
   // Reset al abrir
   useEffect(() => {
@@ -82,6 +93,8 @@ export default function MealEntryDialog({
       setNota("");
       setAlimentos([]);
       setCatFilter("");
+      setSearch("");
+      setOpenSearchCombo(false);
     }
   }, [open]);
 
@@ -107,39 +120,40 @@ export default function MealEntryDialog({
     .map((id) => foods.find((f) => f.foodId === id))
     .filter((f): f is FoodItem => Boolean(f));
 
-  const filteredFoods = catFilter
+  const filteredByCat = catFilter
     ? sortedFoods.filter((f) => f.categoria === catFilter)
     : sortedFoods;
 
-  const categories: FoodItem["categoria"][] = Array.from(
-    new Set(
-      foods
-        .map((f) => f.categoria)
-        .filter((c): c is Exclude<FoodItem["categoria"], undefined> => Boolean(c))
-    )
-  );
+  // Buscador de texto: filtra la grilla por nombre (ignora categoría activa si hay texto)
+  const filteredFoods = search.trim()
+    ? sortedFoods.filter((f) => f.nombre.toLowerCase().includes(search.trim().toLowerCase()))
+    : filteredByCat;
+
+  // Categorías presentes en el catálogo, respetando el orden definido
+  const categories: FoodItem["categoria"][] = CATEGORY_ORDER.filter(
+    (c) => !catFilter || c === catFilter,
+  ).filter((c) => foods.some((f) => f.categoria === c));
 
   const addAlimentoFromFood = (food: FoodItem) => {
     markFoodUsed(food);
+    const unidad = food.unidad ?? "g";
     setAlimentos((prev) => [
       ...prev,
       {
         foodId: food.foodId,
         nombre: food.nombre,
-        cantidad: 0,
-        unidad: food.unidad,
+        cantidad: defaultServing(unidad),
+        unidad,
         equivalenciaGramos: food.equivalenciaGramos,
+        emoji: food.emoji,
       },
     ]);
-  };
-
-  const addEmptyAlimento = () => {
-    setAlimentos((prev) => [...prev, { foodId: "", nombre: "", cantidad: 0, unidad: "g" }]);
   };
 
   const updateAlimento = (index: number, food: FoodItem | null) => {
     if (!food) return;
     markFoodUsed(food);
+    const unidad = food.unidad ?? "g";
     setAlimentos((prev) =>
       prev.map((a, i) =>
         i === index
@@ -147,31 +161,38 @@ export default function MealEntryDialog({
               ...a,
               foodId: food.foodId,
               nombre: food.nombre,
-              unidad: food.unidad,
+              unidad,
               equivalenciaGramos: food.equivalenciaGramos,
+              emoji: food.emoji,
             }
           : a,
       ),
     );
   };
 
-  const updateCantidad = (index: number, cantidad: number) => {
-    setAlimentos((prev) => prev.map((a, i) => (i === index ? { ...a, cantidad } : a)));
+  const ajustarCantidad = (index: number, delta: number) => {
+    setAlimentos((prev) =>
+      prev.map((a, i) =>
+        i === index
+          ? { ...a, cantidad: adjustCantidad(a.unidad as "g" | "und" | "ml", a.cantidad, delta) }
+          : a,
+      ),
+    );
   };
 
   const removeAlimento = (index: number) => {
     setAlimentos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const canSave =
-    alimentos.length > 0 && alimentos.every((a) => a.foodId && a.cantidad > 0);
+  const canSave = alimentos.length > 0 && alimentos.every((a) => a.foodId && a.cantidad > 0);
 
-  const totalGramos = alimentos.reduce((sum, a) => {
+  const gramosDe = (a: MealAlimento): number => {
     if (a.unidad === "und" && a.equivalenciaGramos) {
-      return sum + Math.round(a.cantidad * a.equivalenciaGramos);
+      return Math.round(a.cantidad * a.equivalenciaGramos);
     }
-    return sum + Math.round(a.cantidad);
-  }, 0);
+    return Math.round(a.cantidad);
+  };
+  const totalGramos = alimentos.reduce((sum, a) => sum + gramosDe(a), 0);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -223,7 +244,7 @@ export default function MealEntryDialog({
           inputProps={{ maxLength: 200 }}
         />
 
-        {/* Favoritos y recientes */}
+        {/* Favoritos y recientes (acceso rápido, 1 clic) */}
         {(favorites.length > 0 || recents.length > 0) && (
           <Box mb={1.5}>
             {favorites.length > 0 && (
@@ -235,7 +256,7 @@ export default function MealEntryDialog({
                   {favorites.map((f) => (
                     <Chip
                       key={f.foodId}
-                      label={f.nombre}
+                      label={`${f.emoji ? f.emoji + " " : ""}${f.nombre}`}
                       clickable
                       color="warning"
                       size="small"
@@ -254,7 +275,7 @@ export default function MealEntryDialog({
                   {recents.map((f) => (
                     <Chip
                       key={f.foodId}
-                      label={f.nombre}
+                      label={`${f.emoji ? f.emoji + " " : ""}${f.nombre}`}
                       clickable
                       size="small"
                       variant="outlined"
@@ -267,124 +288,263 @@ export default function MealEntryDialog({
           </Box>
         )}
 
-        {/* Filtro por categoría */}
+        {/* Selección visual por categoría + buscador */}
+        <Typography variant="caption" color="text.secondary" display="block" fontWeight={600}>
+          Toca un alimento para agregarlo
+        </Typography>
+
+        {/* Chips de categoría */}
         {categories.length > 0 && (
-          <Box mb={1}>
-            <Typography variant="caption" color="text.secondary" display="block">
-              Filtrar por categoría
-            </Typography>
-            <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.5}>
-              <Chip
-                label="Todos"
-                size="small"
-                clickable
-                color={!catFilter ? "primary" : "default"}
-                onClick={() => setCatFilter("")}
-              />
-              {categories.map((c) => {
-                const cat = c as string;
-                return (
-                  <Chip
-                    key={cat}
-                    label={cat.replace(/_/g, " ")}
-                    size="small"
-                    clickable
-                    color={catFilter === cat ? "primary" : "default"}
-                    onClick={() => setCatFilter(catFilter === cat ? "" : cat)}
-                  />
-                );
-              })}
-            </Box>
+          <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.5} mb={1}>
+            <Chip
+              label="😀 Todos"
+              size="small"
+              clickable
+              variant={!catFilter && !search ? "filled" : "outlined"}
+              color={!catFilter && !search ? "primary" : "default"}
+              onClick={() => {
+                setCatFilter("");
+                setSearch("");
+              }}
+            />
+            {categories.map((c) => {
+              const cat = c as string;
+              const info = CAT_INFO[c as FoodCategory];
+              const active = catFilter === cat && !search;
+              return (
+                <Chip
+                  key={cat}
+                  label={`${info.emoji} ${info.label}`}
+                  size="small"
+                  clickable
+                  variant={active ? "filled" : "outlined"}
+                  color={active ? "primary" : cat === "no_keto" ? "error" : "default"}
+                  onClick={() => {
+                    setSearch("");
+                    setCatFilter(catFilter === cat ? "" : cat);
+                  }}
+                />
+              );
+            })}
           </Box>
         )}
 
-        {/* Lista de alimentos */}
-        <Typography variant="caption" color="text.secondary" fontWeight={700}>
-          Alimentos
-        </Typography>
-        <Box mt={0.5} mb={1}>
-          {alimentos.map((item, index) => {
-            const fav = favorites.some((f) => f.foodId === item.foodId);
-            return (
-              <Box key={index} display="flex" gap={1} alignItems="center" mb={1}>
-                <Autocomplete
-                  options={filteredFoods}
-                  getOptionLabel={(o) => o.nombre}
-                  isOptionEqualToValue={(o, v) => o.foodId === v.foodId}
-                  value={foods.find((f) => f.foodId === item.foodId) ?? null}
-                  onChange={(_, newValue) => updateAlimento(index, newValue)}
-                  size="small"
-                  sx={{ flex: 2 }}
-                  renderOption={(props, option) => {
-                    const isFav = favorites.some((f) => f.foodId === option.foodId);
-                    return (
-                      <li {...props} key={option.foodId}>
-                        <IconButton
-                          size="small"
-                          component="span"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            isFav ? removeFromFavorites(option.foodId) : addToFavorites(option);
-                          }}
-                        >
-                          {isFav ? (
-                            <Star fontSize="small" sx={{ color: "warning.main" }} />
-                          ) : (
-                            <StarBorder fontSize="small" />
-                          )}
-                        </IconButton>
-                        <Box component="span" sx={{ flex: 1, ml: 0.5 }}>
-                          {option.nombre}
-                          {option.categoria === "no_keto" && (
-                            <Typography
-                              component="span"
-                              variant="caption"
-                              color="error"
-                              fontWeight={700}
-                              sx={{ ml: 1 }}
-                            >
-                              (no KETO)
-                            </Typography>
-                          )}
-                        </Box>
-                      </li>
-                    );
+        {/* Buscador de texto */}
+        <MuiTextField
+          placeholder="Buscar otro alimento…"
+          size="small"
+          fullWidth
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{ startAdornment: <Search fontSize="small" sx={{ mr: 1, color: "text.secondary" }} /> }}
+          sx={{ mb: 1 }}
+        />
+
+        {/* Grilla de alimentos */}
+        {filteredFoods.length > 0 ? (
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 1,
+              maxHeight: 300,
+              overflowY: "auto",
+              mb: 1.5,
+            }}
+          >
+            {filteredFoods.map((f) => {
+              const isFav = favorites.some((x) => x.foodId === f.foodId);
+              const isNoKeto = f.categoria === "no_keto";
+              return (
+                <Box
+                  key={f.foodId}
+                  onClick={() => addAlimentoFromFood(f)}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: isNoKeto ? "error.light" : "AMSnowGray.main",
+                    borderRadius: 3,
+                    p: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    position: "relative",
+                    "&:active": { bgcolor: "grey.100" },
                   }}
-                  renderInput={(params) => (
-                    <MuiTextField {...params} placeholder="Buscar alimento..." />
-                  )}
-                />
-                <MuiTextField
-                  size="small"
-                  type="number"
-                  placeholder="Cant."
-                  value={item.cantidad || ""}
-                  onChange={(e) => updateCantidad(index, Number(e.target.value))}
-                  inputProps={{ min: 0, step: 1 }}
-                  sx={{ flex: 0.8 }}
-                />
-                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 24 }}>
-                  {item.unidad}
-                </Typography>
-                <IconButton size="small" color="error" onClick={() => removeAlimento(index)}>
-                  <Delete fontSize="small" />
-                </IconButton>
-                {fav && <Star fontSize="small" sx={{ color: "warning.main" }} />}
-              </Box>
-            );
-          })}
-          <Button startIcon={<Add />} onClick={addEmptyAlimento} size="small" sx={{ mt: 0.5 }}>
-            Agregar alimento
-          </Button>
-        </Box>
+                >
+                  <Box sx={{ fontSize: 34, lineHeight: 1.1 }}>{f.emoji || FOOD_FALLBACK_EMOJI}</Box>
+                  <Typography variant="caption" lineHeight={1.15} mt={0.5} fontWeight={600}>
+                    {f.nombre}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {f.unidad === "und" && f.equivalenciaGramos
+                      ? `1 und ≈ ${f.equivalenciaGramos} g`
+                      : f.unidad}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    component="span"
+                    sx={{ position: "absolute", top: 2, right: 2, p: 0.5 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      isFav ? removeFromFavorites(f.foodId) : addToFavorites(f);
+                    }}
+                  >
+                    {isFav ? (
+                      <Star fontSize="small" sx={{ color: "warning.main" }} />
+                    ) : (
+                      <StarBorder fontSize="small" />
+                    )}
+                  </IconButton>
+                </Box>
+              );
+            })}
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+            No hay alimentos para esta búsqueda.
+          </Typography>
+        )}
+
+        {/* Botón secundario: Autocomplete para búsqueda libre */}
+        <Button
+          startIcon={<Search />}
+          size="small"
+          sx={{ mb: 1.5 }}
+          onClick={() => setOpenSearchCombo((v) => !v)}
+        >
+          {openSearchCombo ? "Ocultar búsqueda" : "Buscar otro…"}
+        </Button>
+        {openSearchCombo && (
+          <Autocomplete
+            options={sortedFoods}
+            getOptionLabel={(o) => o.nombre}
+            isOptionEqualToValue={(o, v) => o.foodId === v.foodId}
+            onChange={(_, newValue) => {
+              if (newValue) {
+                addAlimentoFromFood(newValue);
+                setOpenSearchCombo(false);
+              }
+            }}
+            size="small"
+            sx={{ mb: 1.5 }}
+            renderOption={(props, option) => {
+              const isFav = favorites.some((f) => f.foodId === option.foodId);
+              return (
+                <li {...props} key={option.foodId}>
+                  <Box component="span" sx={{ flex: 1, ml: 0.5 }}>
+                    {option.emoji ? option.emoji + " " : ""}
+                    {option.nombre}
+                    {option.categoria === "no_keto" && (
+                      <Typography component="span" variant="caption" color="error" fontWeight={700} sx={{ ml: 1 }}>
+                        (no KETO)
+                      </Typography>
+                    )}
+                  </Box>
+                  <IconButton
+                    size="small"
+                    component="span"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      isFav
+                        ? removeFromFavorites(option.foodId)
+                        : addToFavorites(option);
+                    }}
+                  >
+                    {isFav ? (
+                      <Star fontSize="small" sx={{ color: "warning.main" }} />
+                    ) : (
+                      <StarBorder fontSize="small" />
+                    )}
+                  </IconButton>
+                </li>
+              );
+            }}
+            renderInput={(params) => (
+              <MuiTextField {...params} placeholder="Buscar alimento por nombre…" />
+            )}
+          />
+        )}
+
+        {/* Lista de alimentos agregados con botones +/− */}
+        {alimentos.length > 0 && (
+          <Box mb={1.5}>
+            <Typography variant="subtitle2" fontWeight={700} mb={0.5}>
+              Tu comida
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={1}>
+              {alimentos.map((item, index) => {
+                const fav = favorites.some((f) => f.foodId === item.foodId);
+                const unidad = item.unidad as "g" | "und" | "ml";
+                const step = stepFor(unidad);
+                const minHit = item.cantidad <= servingMin(unidad);
+                const maxHit = item.cantidad >= servingMax(unidad);
+                return (
+                  <Box
+                    key={index}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      border: "1px solid",
+                      borderColor: "AMSnowGray.main",
+                      borderRadius: 3,
+                      p: 0.75,
+                      pr: 1,
+                    }}
+                  >
+                    <Box sx={{ fontSize: 26 }}>{item.emoji || FOOD_FALLBACK_EMOJI}</Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="body2" fontWeight={700} noWrap>
+                        {item.nombre}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {item.unidad}
+                        {item.unidad === "und" && item.equivalenciaGramos
+                          ? ` · ≈ ${Math.round(item.cantidad * item.equivalenciaGramos)} g`
+                          : ""}
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => ajustarCantidad(index, -step)}
+                      disabled={minHit}
+                    >
+                      <Remove />
+                    </IconButton>
+                    <Typography variant="body2" fontWeight={800} sx={{ minWidth: 54, textAlign: "center" }}>
+                      {item.cantidad}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => ajustarCantidad(index, step)}
+                      disabled={maxHit}
+                    >
+                      <Add />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => removeAlimento(index)}
+                      color="error"
+                      aria-label={`Quitar ${item.nombre}`}
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                    {fav && <Star fontSize="small" sx={{ color: "warning.main" }} />}
+                  </Box>
+                );
+              })}
+            </Box>
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              Toque +/− para ajustar. Total {totalGramos} g.
+            </Typography>
+          </Box>
+        )}
 
         {/* Resumen */}
         {alimentos.length > 0 && (
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            sx={{ bgcolor: "grey.50", p: 1.5, borderRadius: 1 }}
-          >
+          <Box display="flex" justifyContent="space-between" sx={{ bgcolor: "grey.50", p: 1.5, borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary">
               {alimentos.length} alimento{alimentos.length !== 1 ? "s" : ""}
             </Typography>

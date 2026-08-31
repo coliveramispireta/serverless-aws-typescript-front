@@ -146,6 +146,8 @@ export interface FoodItem {
   unidad: FoodUnit;
   equivalenciaGramos?: number;
   categoria?: FoodCategory;
+  /** Emoji representativo del alimento (para la grilla visual) */
+  emoji?: string;
 }
 
 // ─── Líquidos ────────────────────────────────────────────────

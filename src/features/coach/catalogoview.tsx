@@ -76,7 +76,8 @@ export default function CoachCatalogoView() {
     unidad: FoodUnit;
     equivalenciaGramos: string;
     categoria: FoodCategory;
-  }>({ nombre: "", unidad: "g", equivalenciaGramos: "", categoria: "proteina" });
+    emoji: string;
+  }>({ nombre: "", unidad: "g", equivalenciaGramos: "", categoria: "proteina", emoji: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,7 +117,7 @@ export default function CoachCatalogoView() {
   }, [load]);
 
   const openAdd = () => {
-    setForm({ nombre: "", unidad: "g", equivalenciaGramos: "", categoria: "proteina" });
+    setForm({ nombre: "", unidad: "g", equivalenciaGramos: "", categoria: "proteina", emoji: "" });
     setAddError(null);
     setAddOpen(true);
   };
@@ -138,6 +139,7 @@ export default function CoachCatalogoView() {
             ? Number(form.equivalenciaGramos)
             : undefined,
         categoria: form.categoria,
+        emoji: form.emoji.trim() || undefined,
       });
       setAddOpen(false);
       await load();
@@ -256,7 +258,7 @@ export default function CoachCatalogoView() {
                   {items.map((f) => (
                     <Chip
                       key={f.foodId}
-                      label={`${f.nombre} (${unidadLabel(f)})`}
+                      label={`${f.emoji ? f.emoji + " " : ""}${f.nombre} (${unidadLabel(f)})`}
                       size="small"
                       variant="outlined"
                       color={cat === "no_keto" ? "error" : "default"}
@@ -280,6 +282,15 @@ export default function CoachCatalogoView() {
               fullWidth
               value={form.nombre}
               onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
+            />
+            <TextField
+              label="Emoji (opcional)"
+              size="small"
+              fullWidth
+              placeholder="Ej: 🥩 🍗 🥦"
+              value={form.emoji}
+              onChange={(e) => setForm((p) => ({ ...p, emoji: e.target.value }))}
+              helperText="Se muestra en la grilla visual al registrar comida."
             />
             <FormControl size="small" fullWidth>
               <InputLabel>Unidad</InputLabel>
