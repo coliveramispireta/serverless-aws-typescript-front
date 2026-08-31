@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   Box,
@@ -44,7 +44,8 @@ import {
 } from "@/lib/engine/metrics";
 import { getAutoMotivation, getAutoRecommendation } from "@/lib/engine/motivation";
 import { evaluateAchievements } from "@/lib/engine/achievements";
-import { buildLocalUserProfile, getProfilePrefs } from "@/lib/profileprefs";
+import { buildLocalUserProfile, getProfilePrefs, ProfilePrefs } from "@/lib/profileprefs";
+import { getProfile } from "@/services/keto/profile.service";
 import { getUserInfo } from "@/services/xstorage.cross.service";
 
 /**
@@ -55,13 +56,33 @@ import { getUserInfo } from "@/services/xstorage.cross.service";
  */
 export default function InicioPage() {
   const userInfo = getUserInfo();
-  const prefs = getProfilePrefs();
   const { weights, meals, liquids, loading, error, reload } = useUserData();
   const push = usePush();
 
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [pushMsgOk, setPushMsgOk] = useState(false);
   const [openImport, setOpenImport] = useState(false);
+
+  // Preferencias: locales primero y luego el backend (para que altura/IMC
+  // aparezcan en cualquier dispositivo aunque el localStorage esté vacío).
+  const localPrefs = useMemo(() => getProfilePrefs(), []);
+  const [serverPrefs, setServerPrefs] = useState<Pick<ProfilePrefs, "alturaCm" | "pesoObjetivoKg"> | null>(null);
+  useEffect(() => {
+    getProfile()
+      .then((p) =>
+        setServerPrefs({
+          alturaCm: p.alturaCm,
+          pesoObjetivoKg: p.pesoObjetivoKg,
+        })
+      )
+      .catch(() => {
+        // Sin conexión: se conservan las preferencias locales
+      });
+  }, []);
+  const prefs = useMemo<ProfilePrefs>(
+    () => (serverPrefs ? { ...localPrefs, ...serverPrefs } : localPrefs),
+    [localPrefs, serverPrefs]
+  );
 
   const metrics = useMemo(
     () => computeMetrics(weights, meals, prefs),
@@ -341,7 +362,7 @@ export default function InicioPage() {
                   </Typography>
                   <MetricHelp>{helpPesoChart}</MetricHelp>
                 </Box>
-                <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} />
+                <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} meals={meals} />
                 <Box textAlign="center" mt={1}>
                   <Button component={Link} href="/peso" size="small">
                     Registrar peso

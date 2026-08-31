@@ -44,7 +44,7 @@ interface WeightFormModel {
 export default function PesoPage() {
   const userInfo = getUserInfo();
   const prefs = getProfilePrefs();
-  const { weights, loading, error, reload } = useUserData();
+  const { weights, meals, loading, error, reload } = useUserData();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -167,7 +167,7 @@ export default function PesoPage() {
       {/* Gráfica siempre visible */}
       <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 2 }}>
         <CardContent sx={{ p: 2 }}>
-          <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} />
+          <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} meals={meals} />
         </CardContent>
       </Card>
 

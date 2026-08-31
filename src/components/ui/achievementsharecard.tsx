@@ -11,6 +11,13 @@ export interface ShareCardData {
   fecha?: string;
 }
 
+/** Tamaño de diseño base del card (px) — también se usa para el PNG 1:1 */
+export const SHARE_CARD_SIZE = 1080;
+/** Tamaño de la vista previa en el diálogo (px) */
+export const SHARE_PREVIEW_SIZE = 240;
+/** Escala exacta para que el contenido centrado del card caiga en el centro de la preview */
+export const SHARE_PREVIEW_SCALE = SHARE_PREVIEW_SIZE / SHARE_CARD_SIZE;
+
 /**
  * Card visual del logro que se comparte por imagen (WhatsApp) o se muestra
  * como vista previa. Diseño keto con degradado, emoji grande, título y
@@ -22,13 +29,13 @@ export default function AchievementShareCard({ data, compact }: { data: ShareCar
       ? Math.min(100, Math.round((data.progreso.actual / data.progreso.meta) * 100))
       : null;
 
-  const S = compact ? 0.22 : 1;
+  const S = compact ? SHARE_PREVIEW_SCALE : 1;
 
   return (
     <Box
       sx={{
-        width: 1080,
-        height: 1080,
+        width: SHARE_CARD_SIZE,
+        height: SHARE_CARD_SIZE,
         transform: compact ? `scale(${S})` : undefined,
         transformOrigin: "top left",
         flexShrink: 0,

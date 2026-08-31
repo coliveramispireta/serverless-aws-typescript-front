@@ -24,7 +24,7 @@ import {
   Share as ShareIcon,
 } from "@mui/icons-material";
 import { shareAchievement } from "@/services/keto/achievements.service";
-import AchievementShareCard from "./achievementsharecard";
+import AchievementShareCard, { SHARE_CARD_SIZE, SHARE_PREVIEW_SIZE } from "./achievementsharecard";
 
 export interface ShareableAchievement {
   codigo: string;
@@ -122,12 +122,16 @@ export default function ShareAchievementDialog({
     try {
       setBuildingImage(true);
       const dataUrl = await toPng(cardRef.current, {
-        pixelRatio: 1,
+        pixelRatio: 2,
         cacheBust: true,
         width: cardRef.current.offsetWidth,
         height: cardRef.current.offsetHeight,
       });
       return await (await fetch(dataUrl)).blob();
+    } catch (err) {
+      console.error("buildCardPng:", err);
+      setError("No se pudo generar la imagen del logro. Vuelve a intentarlo.");
+      return null;
     } finally {
       setBuildingImage(false);
     }
@@ -220,15 +224,18 @@ export default function ShareAchievementDialog({
 
   return (
     <>
-      {/* Nodo oculto para generar la imagen PNG del logro */}
+      {/* Nodo oculto para generar la imagen PNG del logro.
+          Se ubica en el viewport (left:0) pero detrás de la app (zIndex -1)
+          para que html-to-image no capture fuera de pantalla (que produce
+          PNG negro/vacío en varios navegadores). */}
       <Box
         ref={cardRef}
         sx={{
           position: "fixed",
-          left: -9999,
+          left: 0,
           top: 0,
-          width: 1080,
-          height: 1080,
+          width: SHARE_CARD_SIZE,
+          height: SHARE_CARD_SIZE,
           zIndex: -1,
           pointerEvents: "none",
           opacity: 1,
@@ -248,20 +255,20 @@ export default function ShareAchievementDialog({
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ pt: 0 }}>
-          {/* Vista previa visual del logro */}
+          {/* Vista previa visual del logro: ventana fija del tamaño exacto del card
+              escalado, sin centrado flex (que dejaba el contenido fuera del recorte). */}
           <Box
             sx={{
-              borderRadius: 3,
+              position: "relative",
+              width: SHARE_PREVIEW_SIZE,
+              height: SHARE_PREVIEW_SIZE,
+              maxWidth: "100%",
               overflow: "hidden",
+              borderRadius: 3,
               mb: 2,
+              mx: "auto",
               border: "1px solid",
               borderColor: "AMSnowGray.main",
-              aspectRatio: "1 / 1",
-              maxHeight: 240,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "linear-gradient(160deg, #0d9488 0%, #134e4a 45%, #0f172a 100%)",
             }}
           >
             <AchievementShareCard data={cardData} compact />

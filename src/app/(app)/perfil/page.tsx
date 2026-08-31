@@ -36,6 +36,7 @@ export default function PerfilPage() {
   const profile = buildLocalUserProfile();
   const [prefs, setPrefs] = useState<ProfilePrefs>(getProfilePrefs());
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
   const coach = isCoachEmail(profile.email);
   const push = usePush();
@@ -63,27 +64,32 @@ export default function PerfilPage() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     // Normaliza la altura (admite cm o metros: 1.70 → 170) antes de guardar
     const alturaCm = normalizeAlturaCm(prefs.alturaCm);
     const converted =
       prefs.alturaCm != null && alturaCm != null && prefs.alturaCm !== alturaCm;
     const next: ProfilePrefs = { ...prefs, alturaCm };
     setPrefs(next);
-    // Respaldo local inmediato
-    saveProfilePrefs(next);
+    setSaving(true);
     try {
       await updateProfile({ alturaCm, pesoObjetivoKg: prefs.pesoObjetivoKg });
+      // Solo se persiste en localStorage cuando el backend guardó OK:
+      // así no queda un valor que "parece guardado" pero el coach no tiene.
+      saveProfilePrefs(next);
       setSaved(true);
       setSaveNote(
         converted ? "Guardado. Convertimos tu altura a centímetros (ej. 170)." : null
       );
     } catch {
-      setSaved(true);
+      setSaved(false);
       setSaveNote(
         converted
-          ? "Convertimos tu altura a cm y guardamos localmente (el servicio aún no responde)."
-          : "Guardado localmente (el servicio aún no responde)."
+          ? "⚠️ No se guardó: convertimos tu altura a cm, pero el servicio no respondió. Vuelve a intentarlo."
+          : "⚠️ No se guardó: el servicio no respondió. Vuelve a intentarlo."
       );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -161,8 +167,8 @@ export default function PerfilPage() {
               />
             </Grid>
           </Grid>
-          <Button variant="contained" onClick={handleSave} sx={{ mt: 2 }} fullWidth>
-            {saved ? "✓ Guardado" : "Guardar"}
+          <Button variant="contained" onClick={handleSave} sx={{ mt: 2 }} fullWidth disabled={saving}>
+            {saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar"}
           </Button>
           {saveNote && (
             <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>

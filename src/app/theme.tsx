@@ -200,6 +200,23 @@ export function buildTheme(mode: AppThemeMode = "light"): Theme {
       MuiAppBar: {
         defaultProps: { elevation: 0 },
       },
+      MuiTooltip: {
+        defaultProps: {
+          // En táctil el default exige pulsación larga (~700 ms). Con 0 el tooltip
+          // (p. ej. botón "?" de ayuda) se abre al tocar y se mantiene ~3 s.
+          enterTouchDelay: 0,
+          enterDelay: 0,
+          leaveTouchDelay: 3000,
+          arrow: true,
+        },
+        styleOverrides: {
+          tooltip: {
+            fontSize: 12.5,
+            lineHeight: 1.45,
+            maxWidth: 300,
+          },
+        },
+      },
     },
   });
 }

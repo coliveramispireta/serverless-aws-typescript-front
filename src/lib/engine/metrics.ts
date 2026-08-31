@@ -141,6 +141,30 @@ export function buildWeightSeries(weights: WeightEntry[]): { date: string; kg: n
     .map((w) => ({ date: w.fechaHora, kg: w.pesoKg }));
 }
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** Fecha local YYYY-MM-DD a partir de un ISO datetime (sin dependencias). */
+function toLocalDateKey(iso: string): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+/** Comidas agrupadas por día local: para la cinta "horas de comida" del gráfico. */
+export function buildMealTimeline(meals: MealEntry[]): { date: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const m of meals) {
+    const key = toLocalDateKey(m.fechaHora);
+    if (!key) continue;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
 // ─── Hidratación ──────────────────────────────────────────────
 
 export interface HydrationDayStats {
