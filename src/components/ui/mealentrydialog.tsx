@@ -28,7 +28,7 @@ import {
   addToFavorites,
   removeFromFavorites,
 } from "@/lib/engine/foodPrefs";
-import { CATEGORY_ORDER, CAT_INFO, FOOD_FALLBACK_EMOJI } from "@/lib/engine/categories";
+import { CATEGORY_ORDER, CAT_INFO, foodEmoji } from "@/lib/engine/categories";
 import {
   defaultServing,
   adjustCantidad,
@@ -373,7 +373,7 @@ export default function MealEntryDialog({
                     "&:active": { bgcolor: "grey.100" },
                   }}
                 >
-                  <Box sx={{ fontSize: 34, lineHeight: 1.1 }}>{f.emoji || FOOD_FALLBACK_EMOJI}</Box>
+                  <Box sx={{ fontSize: 34, lineHeight: 1.1 }}>{foodEmoji(f.emoji, f.categoria)}</Box>
                   <Typography variant="caption" lineHeight={1.15} mt={0.5} fontWeight={600}>
                     {f.nombre}
                   </Typography>
@@ -383,18 +383,27 @@ export default function MealEntryDialog({
                       : f.unidad}
                   </Typography>
                   <IconButton
-                    size="small"
                     component="span"
-                    sx={{ position: "absolute", top: 2, right: 2, p: 0.5 }}
+                    aria-label={isFav ? `Quitar ${f.nombre} de favoritos` : `Agregar ${f.nombre} a favoritos`}
                     onClick={(e) => {
                       e.stopPropagation();
                       isFav ? removeFromFavorites(f.foodId) : addToFavorites(f);
                     }}
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      p: 0.75,
+                      bgcolor: isFav ? "rgba(255, 193, 7, 0.12)" : "background.paper",
+                      border: "1px solid",
+                      borderColor: "AMSnowGray.main",
+                      "&:hover": { bgcolor: "action.hover" },
+                    }}
                   >
                     {isFav ? (
-                      <Star fontSize="small" sx={{ color: "warning.main" }} />
+                      <Star sx={{ color: "warning.main" }} />
                     ) : (
-                      <StarBorder fontSize="small" />
+                      <StarBorder sx={{ color: "text.secondary" }} />
                     )}
                   </IconButton>
                 </Box>
@@ -475,7 +484,6 @@ export default function MealEntryDialog({
             </Typography>
             <Box display="flex" flexDirection="column" gap={1}>
               {alimentos.map((item, index) => {
-                const fav = favorites.some((f) => f.foodId === item.foodId);
                 const unidad = item.unidad as "g" | "und" | "ml";
                 const step = stepFor(unidad);
                 const minHit = item.cantidad <= servingMin(unidad);
@@ -494,7 +502,7 @@ export default function MealEntryDialog({
                       pr: 1,
                     }}
                   >
-                    <Box sx={{ fontSize: 26 }}>{item.emoji || FOOD_FALLBACK_EMOJI}</Box>
+                    <Box sx={{ fontSize: 26 }}>{foodEmoji(item.emoji)}</Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body2" fontWeight={700} noWrap>
                         {item.nombre}
@@ -506,23 +514,31 @@ export default function MealEntryDialog({
                           : ""}
                       </Typography>
                     </Box>
-                    <IconButton
-                      size="small"
-                      onClick={() => ajustarCantidad(index, -step)}
-                      disabled={minHit}
-                    >
-                      <Remove />
-                    </IconButton>
-                    <Typography variant="body2" fontWeight={800} sx={{ minWidth: 54, textAlign: "center" }}>
-                      {item.cantidad}
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      onClick={() => ajustarCantidad(index, step)}
-                      disabled={maxHit}
-                    >
-                      <Add />
-                    </IconButton>
+                    <Box display="flex" alignItems="center" gap={0}>
+                      <IconButton
+                        size="small"
+                        sx={{ p: 0.75 }}
+                        onClick={() => ajustarCantidad(index, -step)}
+                        disabled={minHit}
+                      >
+                        <Remove fontSize="small" />
+                      </IconButton>
+                      <Typography
+                        variant="body2"
+                        fontWeight={800}
+                        sx={{ minWidth: 40, textAlign: "center" }}
+                      >
+                        {item.cantidad}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        sx={{ p: 0.75 }}
+                        onClick={() => ajustarCantidad(index, step)}
+                        disabled={maxHit}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    </Box>
                     <IconButton
                       size="small"
                       onClick={() => removeAlimento(index)}
@@ -531,7 +547,6 @@ export default function MealEntryDialog({
                     >
                       <Delete fontSize="small" />
                     </IconButton>
-                    {fav && <Star fontSize="small" sx={{ color: "warning.main" }} />}
                   </Box>
                 );
               })}

@@ -38,3 +38,12 @@ export function catLabel(cat?: FoodCategory): string {
 export function catEmoji(cat?: FoodCategory): string {
   return cat ? (CAT_INFO[cat]?.emoji ?? "🍽️") : "🍽️";
 }
+
+/**
+ * Mejor emoji disponible para un alimento: el propio si lo tiene; si no,
+ * el representativo de su categoría (para que no todos caigan al plato
+ * genérico); y solo como último recurso el fallback.
+ */
+export function foodEmoji(emoji?: string, categoria?: FoodCategory): string {
+  return emoji ?? catEmoji(categoria) ?? FOOD_FALLBACK_EMOJI;
+}
