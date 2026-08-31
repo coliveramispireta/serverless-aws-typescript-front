@@ -21,7 +21,7 @@ export const deleteFood = async (foodId: string): Promise<void> => {
 };
 
 /** Insertar catálogo inicial (coach) */
-export const seedFoods = async (): Promise<{ inserted: number }> => {
+export const seedFoods = async (): Promise<{ inserted: number; updatedEmojis?: number }> => {
   const response = await axiosInstanceLambda.post("/foods/seed");
   return response.data;
 };

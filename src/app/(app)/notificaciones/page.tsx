@@ -135,16 +135,6 @@ export default function NotificacionesPage() {
                               Leída
                             </Button>
                           )}
-                          {n.url && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              endIcon={<OpenInNew fontSize="small" />}
-                              onClick={() => go(n.url)}
-                            >
-                              Ir al app
-                            </Button>
-                          )}
                         </Box>
                       </Box>
                     </Box>

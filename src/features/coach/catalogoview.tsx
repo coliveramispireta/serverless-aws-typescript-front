@@ -53,8 +53,7 @@ const CATEGORY_OPTIONS = (Object.keys(CATEGORY_LABELS) as FoodCategory[]).map((c
 type SeedState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; inserted: number }
-  | { status: "already" }
+  | { status: "success"; inserted: number; updatedEmojis?: number }
   | { status: "forbidden" }
   | { status: "error"; detail: string };
 
@@ -100,11 +99,11 @@ export default function CoachCatalogoView() {
     setSeed({ status: "loading" });
     try {
       const res = await seedFoods();
-      if (res.inserted > 0) {
-        setSeed({ status: "success", inserted: res.inserted });
-      } else {
-        setSeed({ status: "already" });
-      }
+      setSeed({
+        status: "success",
+        inserted: res.inserted,
+        updatedEmojis: res.updatedEmojis,
+      });
       await load();
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -223,12 +222,12 @@ export default function CoachCatalogoView() {
 
           {seed.status === "success" && (
             <Alert severity="success" icon={<CheckCircleOutline />} sx={{ mt: 2 }}>
-              Se insertaron {seed.inserted} alimento{seed.inserted !== 1 ? "s" : ""} al catálogo.
-            </Alert>
-          )}
-          {seed.status === "already" && (
-            <Alert severity="info" sx={{ mt: 2 }}>
-              El catálogo ya estaba poblado. No se insertaron duplicados.
+              {seed.inserted > 0
+                ? `Se insertaron ${seed.inserted} alimento${seed.inserted !== 1 ? "s" : ""} al catálogo.`
+                : "El catálogo ya estaba poblado. No se insertaron nuevos alimentos."}
+              {seed.updatedEmojis
+                ? ` Se completaron ${seed.updatedEmojis} emoji${seed.updatedEmojis !== 1 ? "s" : ""} de alimentos que no tenían.`
+                : ""}
             </Alert>
           )}
           {seed.status === "forbidden" && (

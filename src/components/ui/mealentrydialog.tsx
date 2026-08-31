@@ -84,6 +84,9 @@ export default function MealEntryDialog({
   const [catFilter, setCatFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [openSearchCombo, setOpenSearchCombo] = useState(false);
+  // Contador de "versión" de favoritos: se incrementa al tocar una estrella
+  // para que la UI (grilla + sección Favoritos) se refresque al instante.
+  const [favVersion, setFavVersion] = useState(0);
 
   // Reset al abrir
   useEffect(() => {
@@ -110,8 +113,8 @@ export default function MealEntryDialog({
   }, [foods]);
 
   // Recientes y favoritos
-  const recentIds = useMemo(() => getRecentFoodIds(), [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const favIds = useMemo(() => getFavoriteFoodIds(), [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recentIds = useMemo(() => getRecentFoodIds(), [open, favVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  const favIds = useMemo(() => getFavoriteFoodIds(), [open, favVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const recents = recentIds
     .map((id) => foods.find((f) => f.foodId === id))
@@ -148,6 +151,17 @@ export default function MealEntryDialog({
         emoji: food.emoji,
       },
     ]);
+  };
+
+  // Alterna el favorito y refresca la UI al instante (sin esperar a reabrir)
+  const toggleFav = (food: FoodItem) => {
+    const isFav = favorites.some((x) => x.foodId === food.foodId);
+    if (isFav) {
+      removeFromFavorites(food.foodId);
+    } else {
+      addToFavorites(food);
+    }
+    setFavVersion((v) => v + 1);
   };
 
   const updateAlimento = (index: number, food: FoodItem | null) => {
@@ -387,12 +401,12 @@ export default function MealEntryDialog({
                     aria-label={isFav ? `Quitar ${f.nombre} de favoritos` : `Agregar ${f.nombre} a favoritos`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      isFav ? removeFromFavorites(f.foodId) : addToFavorites(f);
+                      toggleFav(f);
                     }}
                     sx={{
                       position: "absolute",
-                      top: 4,
-                      right: 4,
+                      top: 2,
+                      right: 2,
                       p: 0.75,
                       bgcolor: isFav ? "rgba(255, 193, 7, 0.12)" : "background.paper",
                       border: "1px solid",
@@ -456,9 +470,7 @@ export default function MealEntryDialog({
                     component="span"
                     onClick={(e) => {
                       e.stopPropagation();
-                      isFav
-                        ? removeFromFavorites(option.foodId)
-                        : addToFavorites(option);
+                      toggleFav(option);
                     }}
                   >
                     {isFav ? (
