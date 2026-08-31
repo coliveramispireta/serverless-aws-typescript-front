@@ -5,6 +5,7 @@ import AppShell from "@/components/ui/appshell";
 import GlobalDialogs from "@/components/ui/globaldialogs";
 import { sysAuthGuard } from "../authguards";
 import { OnboardingProvider } from "@/context/onboarding/onboarding.context";
+import { NotificationsProvider } from "@/context/notifications/notifications.context";
 import OnboardingIntro from "@/components/onboarding/onboardingintro";
 import OnboardingTour from "@/components/onboarding/onboardingtour";
 
@@ -16,12 +17,14 @@ import OnboardingTour from "@/components/onboarding/onboardingtour";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingProvider>
-      <WithGuards authGuards={sysAuthGuard}>
-        <AppShell>{children}</AppShell>
-        <OnboardingIntro />
-        <OnboardingTour />
-      </WithGuards>
-      <GlobalDialogs />
+      <NotificationsProvider>
+        <WithGuards authGuards={sysAuthGuard}>
+          <AppShell>{children}</AppShell>
+          <OnboardingIntro />
+          <OnboardingTour />
+        </WithGuards>
+        <GlobalDialogs />
+      </NotificationsProvider>
     </OnboardingProvider>
   );
 }

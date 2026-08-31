@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   AppBar,
   Avatar,
+  Badge,
   Box,
   Divider,
   Fab,
@@ -29,6 +30,7 @@ import {
   Logout,
   MenuBook,
   NotificationsActive,
+  NotificationsNone,
   Person,
   Restaurant,
   School,
@@ -43,6 +45,7 @@ import { getUserInfo, cleanData } from "@/services/xstorage.cross.service";
 import { isCoachEmail } from "@/lib/auth/roles";
 import { useThemeMode } from "@/theme/thememode";
 import { useOnboarding } from "@/context/onboarding/onboarding.context";
+import { useNotifications } from "@/context/notifications/notifications.context";
 import usePush from "@/hooks/usepush";
 import ErrorBoundary from "@/components/ui/errorboundary";
 
@@ -65,6 +68,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const userInfo = getUserInfo();
   const { mode, toggle: toggleTheme } = useThemeMode();
   const onboarding = useOnboarding();
+  const notifs = useNotifications();
   const push = usePush();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -162,6 +166,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <School />
               </IconButton>
             )}
+            <IconButton
+              onClick={() => router.push("/notificaciones")}
+              aria-label="Notificaciones"
+              color={notifs.unread > 0 ? "primary" : "default"}
+            >
+              <Badge badgeContent={notifs.unread} color="error" overlap="circular">
+                <NotificationsNone />
+              </Badge>
+            </IconButton>
             <IconButton onClick={handleMenuClick} size="small" data-tour="appbar-menu">
               <Avatar
                 src={userInfo.photoURL || undefined}
