@@ -486,6 +486,85 @@ export const ACHIEVEMENT_RULES: AchievementRule[] = [
   },
 ];
 
+// ─── Escalones de peso dinámicos ──────────────────────────────
+
+/** Emojis que rotan entre los escalones de pérdida de peso */
+const WEIGHT_STEP_EMOJIS = ["🎯", "🔥", "💪", "🏅", "🌟", "🚀", "⚡", "💎", "👑", "🏆"];
+
+/** Códigos de los escalones de pérdida de peso FIJOS (se sustituyen por dinámicos) */
+const FIXED_WEIGHT_LOSS_CODES = new Set([
+  "menos-050-kg",
+  "menos-1-kg",
+  "menos-2-kg",
+  "menos-3-kg",
+  "menos-5-kg",
+  "menos-7-kg",
+  "menos-10-kg",
+]);
+
+/**
+ * Escalones de pérdida de peso, calculados según la meta del usuario:
+ * un escalón por cada kilo entero desde 1 hasta N, donde N = peso inicial − peso meta.
+ * Se mantiene un hito inicial de −0.5 kg.
+ * Si no hay meta definida (o no es válida), se cae a un fallback de 1..10 kilos.
+ */
+export function buildWeightLossSteps(ctx: AchievementContext): AchievementRule[] {
+  const inicial = ctx.metrics.pesoInicial;
+  const objetivo = ctx.metrics.pesoObjetivo;
+  const hasGoal = inicial != null && objetivo != null && inicial > objetivo;
+  // Si la meta es de N kg, la cantidad de escalones = N (techo para cubrir el último kilo).
+  const totalKg = hasGoal
+    ? Math.min(200, Math.max(1, Math.ceil(inicial! - objetivo!)))
+    : 10;
+
+  const steps: AchievementRule[] = [];
+
+  // Hito inicial: −0.5 kg (siempre presente)
+  steps.push({
+    codigo: "menos-050-kg",
+    titulo: "−0.5 kg",
+    descripcion: "Medio kilo menos. ¡Primer logro de peso!",
+    emoji: "🌿",
+    tipo: "peso",
+    explicacion: "Medio kilo ya es un avance real. La pérdida sana es gradual y constante.",
+    cond: (c) => (c.metrics.perdidaTotalKg ?? 0) >= 0.5,
+    progreso: (c) => ({
+      actual: Math.round((c.metrics.perdidaTotalKg ?? 0) * 10) / 10,
+      meta: 0.5,
+    }),
+  });
+
+  // Escalones por kilo (1..totalKg)
+  for (let kg = 1; kg <= totalKg; kg++) {
+    steps.push({
+      codigo: `menos-${kg}-kg`,
+      titulo: `−${kg} kg`,
+      descripcion: hasGoal
+        ? `Escalón ${kg} de ${totalKg} hacia tu meta (${inicial} → ${objetivo} kg).`
+        : `${kg} kilogramo${kg !== 1 ? "s" : ""} menos.`,
+      emoji: WEIGHT_STEP_EMOJIS[kg % WEIGHT_STEP_EMOJIS.length],
+      tipo: "peso",
+      explicacion: hasGoal
+        ? `Vas del puesto ${inicial} kg hacia tu meta de ${objetivo} kg. Cada kilo cuenta.`
+        : "Cada kilo perdido es un paso real. Sigue con el plan.",
+      cond: (c) => (c.metrics.perdidaTotalKg ?? 0) >= kg,
+      progreso: (c) => ({ actual: c.metrics.perdidaTotalKg ?? 0, meta: kg }),
+    });
+  }
+
+  return steps;
+}
+
+/**
+ * Devuelve TODAS las reglas de logros, reemplazando los escalones de peso
+ * fijos por los dinámicos calculados según el contexto (peso inicial → meta).
+ */
+export function buildAchievementRules(ctx: AchievementContext): AchievementRule[] {
+  const base = ACHIEVEMENT_RULES.filter((r) => !FIXED_WEIGHT_LOSS_CODES.has(r.codigo));
+  return [...base, ...buildWeightLossSteps(ctx)];
+}
+
+
 /**
  * Devuelve los logros automáticos cumplidos según los datos actuales.
  * `existingCodes` permite excluir logros ya otorgados.
@@ -523,7 +602,7 @@ export function evaluateAchievements(
   };
 
   const earned: Achievement[] = [];
-  for (const rule of ACHIEVEMENT_RULES) {
+  for (const rule of buildAchievementRules(ctx)) {
     if (existing.has(rule.codigo)) continue;
     if (rule.cond(ctx)) {
       earned.push({

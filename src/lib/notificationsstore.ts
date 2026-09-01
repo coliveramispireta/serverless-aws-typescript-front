@@ -13,6 +13,7 @@ export interface AppNotification {
   url?: string;
   tag?: string;
   emoji?: string;
+  image?: string;
   ts: number;
   read?: boolean;
 }

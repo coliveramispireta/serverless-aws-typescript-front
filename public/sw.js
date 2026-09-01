@@ -186,6 +186,7 @@ self.addEventListener("push", (event) => {
     url: data.url || "/inicio",
     tag: data.tag || "",
     emoji: data.emoji || "",
+    image: data.image || "",
     ts: data.ts || Date.now(),
   };
 
@@ -198,6 +199,8 @@ self.addEventListener("push", (event) => {
       self.registration.showNotification(title, {
         body: data.body || "",
         icon: "/keto/logo.svg",
+        // Imagen grande (flyer) en Android
+        image: data.image || undefined,
         // Badge = smallIcon de la barra de estado en Android.
         // Debe ser silueta blanca con fondo transparente; si es opaco,
         // Android muestra un cuadrado blanco.

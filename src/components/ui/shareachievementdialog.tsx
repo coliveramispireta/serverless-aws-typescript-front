@@ -99,7 +99,8 @@ export default function ShareAchievementDialog({
   if (!achievement) return null;
 
   const shareText = `¡Logré "${achievement.titulo}" en mi camino keto! ${achievement.emoji}`;
-  const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const shareUrl =
+    typeof window !== "undefined" ? window.location.origin + "/instalar" : "";
   const fullText = `${shareText}\n${shareUrl}`;
 
   const cardData = {

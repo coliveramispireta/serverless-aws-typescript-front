@@ -121,6 +121,21 @@ export default function NotificacionesPage() {
                       >
                         {n.body}
                       </Typography>
+
+                      {n.image && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={n.image}
+                          alt=""
+                          style={{
+                            width: "100%",
+                            maxHeight: 260,
+                            objectFit: "cover",
+                            borderRadius: 12,
+                            marginTop: 8,
+                          }}
+                        />
+                      )}
                       <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
                         <Typography variant="caption" color="text.secondary">
                           {when}

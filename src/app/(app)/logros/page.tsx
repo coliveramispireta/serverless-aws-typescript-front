@@ -17,7 +17,7 @@ import AchievementCard from "@/components/ui/achievementcard";
 import ShareAchievementDialog, { ShareableAchievement } from "@/components/ui/shareachievementdialog";
 import useUserData from "@/hooks/useuserdata";
 import {
-  ACHIEVEMENT_RULES,
+  buildAchievementRules,
   AchievementContext,
   AchievementType,
 } from "@/lib/engine/achievements";
@@ -68,11 +68,26 @@ export default function LogrosPage() {
   );
 
   const autoStatus = useMemo(() => {
-    return ACHIEVEMENT_RULES.map((rule) => {
+    const all = buildAchievementRules(context).map((rule) => {
       const earned = rule.cond(context);
       const progreso = rule.progreso ? rule.progreso(context) : null;
       return { ...rule, earned, progreso };
     });
+
+    // Escalones de peso dinámicos (`menos-N-kg`): ocultar los muy lejanos para
+    // no inundar la lista (p.ej. con una meta de 30kg habría ~31 tarjetas).
+    // Se muestran: los ya logrados/sobrepasados + el siguiente + hasta 2 próximos.
+    const isWeightStep = (codigo: string) => /^menos-\d+-kg$/.test(codigo);
+    const perdida = context.metrics.perdidaTotalKg ?? 0;
+
+    const weightSteps = all.filter((a) => isWeightStep(a.codigo));
+    const others = all.filter((a) => !isWeightStep(a.codigo));
+
+    const achieved = weightSteps.filter((a) => perdida >= (a.progreso?.meta ?? 0));
+    const remaining = weightSteps.filter((a) => perdida < (a.progreso?.meta ?? 0));
+    const visibleWeight = [...achieved, ...remaining.slice(0, 3)];
+
+    return [...others, ...visibleWeight];
   }, [context]);
 
   const visibleAuto =
