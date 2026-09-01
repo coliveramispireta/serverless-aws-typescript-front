@@ -51,6 +51,13 @@ function fmtDate(isoDate: string): string {
   return `${d}/${m}`;
 }
 
+function fmtToday(): string {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}`;
+}
+
 function fmtH(h: number): string {
   return h % 1 === 0 ? `${h} h` : `${h.toFixed(1)} h`;
 }
@@ -99,7 +106,7 @@ function zoneColor(zone: "autofagia" | "cetosis" | "glucolisis"): string {
 const zoneLabel: Record<"autofagia" | "cetosis" | "glucolisis", string> = {
   autofagia: "🌀 Autofagia ≥16 h",
   cetosis: "🔥 Cetosis 12–16 h",
-  glucolisis: "⚪ Glucolisis <12 h",
+  glucolisis: "⚪ Fuera de cetosis",
 };
 
 /**
@@ -137,7 +144,7 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
   const xCenter = (i: number) => MPAD_L + slot * i + slot / 2;
   const y = (h: number) => MPAD_T + (1 - h / yMax) * plotH;
 
-  const yGlu = y(MET_GLUCOLISIS_H);
+  const yGlu = y(MET_GLUCOLISIS_H); // piso visual ("fuera de cetosis")
   const yAut = y(MET_AUTOFAGIA_H);
 
   /** Nivel efectivo del día: bajar un escalón si hubo comida no keto. */
@@ -164,9 +171,9 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
     <Box>
       {/* Contexto breve */}
       <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-        Una barra por día: muestra hasta dónde llegó tu ayuno. <b>🌀 Autofagia</b> (arriba),{" "}
-        <b>🔥 cetosis</b> (medio) y <b>⚪ glucolisis</b> (abajo, fuera de keto). Una 🔴 marca que
-        comiste algo no KETO (baja un escalón).
+        Una barra por día: muestra hasta dónde llegó tu ayuno en dos zonas. <b>🔥 Cetosis</b> (≥12 h) y{" "}
+        <b>🌀 autofagia</b> (≥16 h). Si comés algo <b>no KETO</b> (🔴), bajás al piso: eso sí activa la
+        glucolisis y rompe la cetosis aunque el ayuno sea largo.
       </Typography>
 
       {/* Resumen */}
@@ -178,21 +185,24 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
         )}
       </Box>
 
-      <svg viewBox={`0 0 ${MW} ${MH}`} width="100%" role="img" aria-label="Metabolismo diario (glucolisis, cetosis, autofagia)">
-        {/* Bandas de zonas */}
+      <svg viewBox={`0 0 ${MW} ${MH}`} width="100%" role="img" aria-label="Metabolismo diario (cetosis y autofagia)">
+        {/* Bandas: solo cetosis (12–16 h) y autofagia (≥16 h). Debajo de 12 h = fondo neutro (aún no en cetosis). */}
         <rect x={MPAD_L} y={y(MET_AUTOFAGIA_H)} width={plotW} height={y(0) - y(MET_AUTOFAGIA_H)} fill={C_AUTOFAGIA} opacity={0.08} />
         <rect x={MPAD_L} y={y(MET_CETOSIS_H)} width={plotW} height={y(MET_AUTOFAGIA_H) - y(MET_CETOSIS_H)} fill={C_CETOSIS} opacity={0.08} />
-        <rect x={MPAD_L} y={y(MET_GLUCOLISIS_H)} width={plotW} height={y(MET_CETOSIS_H) - y(MET_GLUCOLISIS_H)} fill={C_GLUCOLISIS} opacity={0.08} />
 
-        {/* Umbrales horizontales */}
+        {/* Umbrales horizontales de cetosis y autofagia */}
         <line x1={MPAD_L} x2={MW - MPAD_R} y1={yAut} y2={yAut} stroke={C_AUTOFAGIA} strokeWidth={1} strokeDasharray="3 3" />
-        <line x1={MPAD_L} x2={MW - MPAD_R} y1={yGlu} y2={yGlu} stroke={C_GLUCOLISIS} strokeWidth={1} strokeDasharray="3 3" />
+        <line x1={MPAD_L} x2={MW - MPAD_R} y1={y(MET_CETOSIS_H)} y2={y(MET_CETOSIS_H)} stroke={C_CETOSIS} strokeWidth={1} strokeDasharray="3 3" />
+
+        {/* Eje Y de horas: gridlines en 16h y 12h */}
+        <line x1={MPAD_L} x2={MW - MPAD_R} y1={yAut} y2={yAut} stroke="#e2e8f0" strokeWidth={0.6} opacity={0.7} />
+        <line x1={MPAD_L} x2={MW - MPAD_R} y1={y(MET_CETOSIS_H)} y2={y(MET_CETOSIS_H)} stroke="#e2e8f0" strokeWidth={0.6} opacity={0.7} />
 
         {/* Barra base de cada día (zona efectiva coloreada) */}
         {days.map((d, i) => {
           const zone = effectiveZoneOf(d);
           const topY = effectiveHeight(d);
-          const color = zoneColor(zone);
+          const color = zone === "autofagia" ? C_AUTOFAGIA : zone === "cetosis" ? C_CETOSIS : C_GLUCOLISIS;
           return (
             <g key={d.date}>
               <rect
@@ -215,7 +225,7 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
               >
                 {d.ayunoMaxH != null ? fmtH(d.ayunoMaxH) : "—"}
               </text>
-              {/* Marcador de comida no keto */}
+              {/* Marcador de comida no keto (glucolisis por comer fuera de keto) */}
               {d.noKeto && (
                 <text x={xCenter(i)} y={MPAD_T + 4} textAnchor="middle" fontSize={9}>
                   🔴
@@ -229,11 +239,11 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
         <text x={MW - MPAD_R} y={yAut + 9} textAnchor="end" fontSize={8} fontWeight={800} fill="#4f46e5">
           autofagia 16h
         </text>
-        <text x={MW - MPAD_R} y={yGlu + 9} textAnchor="end" fontSize={8} fontWeight={800} fill="#047857">
+        <text x={MW - MPAD_R} y={y(MET_CETOSIS_H) + 9} textAnchor="end" fontSize={8} fontWeight={800} fill="#047857">
           cetosis 12h
         </text>
-        <text x={MW - MPAD_R} y={y(0) - 7} textAnchor="end" fontSize={8} fontWeight={800} fill="#64748b">
-          glucolisis 0h
+        <text x={MW - MPAD_R} y={y(0) - 7} textAnchor="end" fontSize={7.5} fontWeight={700} fill="#94a3b8">
+          fuera de cetosis
         </text>
       </svg>
 
@@ -251,8 +261,8 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
       <Box display="flex" gap={1.5} justifyContent="center" mt={1} flexWrap="wrap">
         <LegendDot color={C_AUTOFAGIA} text="🌀 autofagia ≥16 h" />
         <LegendDot color={C_CETOSIS} text="🔥 cetosis 12–16 h" />
-        <LegendDot color={C_GLUCOLISIS} text="⚪ glucolisis <12 h" />
-        <LegendDot color="#ef4444" text="🔴 no KETO" />
+        <LegendDot color={C_GLUCOLISIS} text="⚪ fuera de cetosis" />
+        <LegendDot color="#ef4444" text="🔴 comida no KETO (glucolisis)" />
       </Box>
     </Box>
   );
@@ -262,7 +272,7 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
 
 const HW = 320;
 const HH = 150;
-const HPAD_X = 8;
+const HPAD_X = 30; // margen izquierdo para el eje Y en ml
 const HPAD_Y = 16;
 
 function barColor(pct: number): string {
@@ -330,7 +340,20 @@ export function HydrationChart({
         )}
       </Box>
 
+      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+        Agua diaria frente a tu meta (🎯). El color del punto indica el % de cumplimiento de ese día.
+      </Typography>
+
       <svg viewBox={`0 0 ${HW} ${HH}`} width="100%" role="img" aria-label="Agua diaria en mililitros">
+        {/* Eje Y en ml: 0, 50%, 100% de la meta (o pasos) */}
+        {(objetivoMl != null ? [0, objetivoMl / 2, objetivoMl] : [0, yMax / 2, yMax]).map((v, vi) => (
+          <g key={`yt${vi}`}>
+            <line x1={HPAD_X} x2={HW - HPAD_X} y1={y(v)} y2={y(v)} stroke="#e2e8f0" strokeWidth={0.6} />
+            <text x={HPAD_X - 3} y={y(v) + 2.5} textAnchor="end" fontSize={8} fill="#94a3b8">
+              {Math.round(v / 100) / 10}L
+            </text>
+          </g>
+        ))}
         {/* Gridline media */}
         <line x1={HPAD_X} x2={HW - HPAD_X} y1={y(yMax / 2)} y2={y(yMax / 2)} stroke="#e2e8f0" strokeWidth={1} />
         {/* Línea de meta */}
@@ -461,11 +484,12 @@ export function GeneralMetricsChart({
   const plotH = GH - GPAD_T - GPAD_B;
 
   // Eje X por FECHA REAL (tiempo), no por índice: todas las capas (peso, metab,
-  // agua) comparten el mismo eje temporal para ocupar todo el ancho y quedar
-  // alineadas verticalmente. El 1er día del rango = izquierda, el último = derecha.
+  // agua) comparten el mismo eje temporal. El 1er día del rango = izquierda y
+  // HOY = derecha (la serie llega hasta el borde derecho aunque el último dato
+  // sea anterior a hoy; así no queda todo "pegado a la izquierda").
   const DAY_MS = 1000 * 60 * 60 * 24;
   const tStart = new Date(days[0].date).getTime();
-  const tEnd = new Date(days[days.length - 1].date).getTime();
+  const tEnd = Date.now();
   const spanMs = Math.max(DAY_MS, tEnd - tStart);
   const xByDate = (date: string) =>
     GPAD_L + ((new Date(date).getTime() - tStart) / spanMs) * plotW;
@@ -488,6 +512,14 @@ export function GeneralMetricsChart({
   maxV += padV;
   range = maxV - minV;
   const yKg = (kg: number) => GPAD_T + (1 - (kg - minV) / range) * plotH;
+
+  // Eje Y de peso: etiquetas + gridlines
+  const yTicks = (() => {
+    const target = Math.min(5, Math.max(3, Math.round(plotH / 40)));
+    const ticks: number[] = [];
+    for (let i = 0; i < target; i++) ticks.push(minV + (range * i) / (target - 1));
+    return ticks;
+  })();
 
   // Escala de ayuno (horas) para las barras
   const ayunoMax = Math.max(12, ...days.map((d) => d.ayunoMaxH ?? 0)) + 1;
@@ -633,6 +665,11 @@ export function GeneralMetricsChart({
         {hasWater && <Chip size="small" variant="outlined" label="💧 agua" />}
       </Box>
 
+      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+        Peso (⚖️) + metabolismo diario (🔬) + agua (💧) sobre la misma línea de tiempo, de tu{" "}
+        primer registro hasta hoy. Tocá una barra o la línea de agua para ponerla en primer plano.
+      </Typography>
+
       <svg viewBox={`0 0 ${GW} ${GH}`} width="100%" role="img" aria-label="Resumen general (peso, metabolismo, agua)">
         {/* Fondo / zona de clic para volver al peso */}
         <rect x={GPAD_L} y={GPAD_T} width={plotW} height={plotH} fill="transparent" onClick={() => setFocus("peso")} onPointerDown={() => setFocus("peso")} />
@@ -642,6 +679,17 @@ export function GeneralMetricsChart({
         <rect x={GPAD_L} y={y12} width={plotW} height={y16 - y12} fill={C_CET} opacity={0.06} />
         <line x1={GPAD_L} x2={GW - GPAD_R} y1={y16} y2={y16} stroke={C_AUT} strokeWidth={0.8} strokeDasharray="3 3" opacity={0.4} />
         <line x1={GPAD_L} x2={GW - GPAD_R} y1={y12} y2={y12} stroke={C_CET} strokeWidth={0.8} strokeDasharray="3 3" opacity={0.4} />
+
+        {/* Eje Y de peso: gridlines + etiquetas (kg) */}
+        {hasWeight &&
+          yTicks.map((t, ti) => (
+            <g key={`yt${ti}`}>
+              <line x1={GPAD_L} x2={GW - GPAD_R} y1={yKg(t)} y2={yKg(t)} stroke="#e2e8f0" strokeWidth={0.6} opacity={0.8} />
+              <text x={GPAD_L - 3} y={yKg(t) + 2.5} textAnchor="end" fontSize={7.5} fill="#94a3b8">
+                {Math.round(t)}
+              </text>
+            </g>
+          ))}
 
         {/* Etiquetas de zonas */}
         <text x={GW - GPAD_R} y={y16 - 3} textAnchor="end" fontSize={7.5} fontWeight={700} fill="#4f46e5" opacity={0.7}>autofagia</text>
@@ -672,8 +720,8 @@ export function GeneralMetricsChart({
       </svg>
 
       <Box display="flex" justifyContent="space-between" mt={0.5}>
-        <Typography variant="caption" color="text.secondary">{fmtDate(days[0].date)}</Typography>
-        <Typography variant="caption" color="text.secondary">{fmtDate(days[n - 1].date)}</Typography>
+        <Typography variant="caption" color="text.secondary">{fmtDate(days[0].date)} · inicio</Typography>
+        <Typography variant="caption" color="text.secondary">{fmtToday()} · hoy</Typography>
       </Box>
 
       {/* Leyenda interactiva */}
@@ -682,9 +730,6 @@ export function GeneralMetricsChart({
         {hasMetab && <LegendDot color={C_CET} text="🔬 metabolismo" />}
         {hasWater && <LegendDot color={C_WATER} text="💧 agua" />}
       </Box>
-      <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={0.5}>
-        Tocá una barra o la línea de agua para ponerla en primer plano
-      </Typography>
     </Box>
   );
 }

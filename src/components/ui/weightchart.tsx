@@ -11,7 +11,7 @@ interface WeightChartProps {
 
 const W = 320;
 const H = 150;
-const PAD_X = 8;
+const PAD_X = 30; // margen izquierdo para el eje Y de kg
 const PLOT_TOP = 18; // márgen superior para etiquetas de kg
 const PLOT_BOTTOM = 138; // base del área del peso
 
@@ -71,9 +71,29 @@ export default function WeightChart({ weights, targetWeight }: WeightChartProps)
   const showKgLabel = (i: number) =>
     series.length <= 8 || i === 0 || i === series.length - 1;
 
+  // Eje Y de kg: 3-5 ticks con gridlines
+  const yTicks: number[] = (() => {
+    const count = 4;
+    const out: number[] = [];
+    for (let i = 0; i < count; i++) out.push(minV + (range * i) / (count - 1));
+    return out;
+  })();
+
   return (
     <Box>
+      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+        Evolución de tu peso registrado. La línea baja = pérdida 🎉. La punteada es tu meta.
+      </Typography>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Evolución de peso">
+        {/* Eje Y de kg: gridlines + etiquetas */}
+        {yTicks.map((t, ti) => (
+          <g key={`yt${ti}`}>
+            <line x1={PAD_X} x2={W - PAD_X} y1={y(t)} y2={y(t)} stroke="#e2e8f0" strokeWidth={0.6} />
+            <text x={PAD_X - 3} y={y(t) + 2.5} textAnchor="end" fontSize={8} fill="#94a3b8">
+              {Math.round(t)}
+            </text>
+          </g>
+        ))}
         {/* Línea de objetivo */}
         {targetWeight != null && (
           <>

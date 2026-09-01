@@ -124,7 +124,7 @@ export default function InicioPage() {
   const helpPesoChart =
     "Evolución de tu peso registrado. La línea punteada es tu meta. Registra peso desde la pestaña Peso o el botón de abajo.";
   const helpAlimChart =
-    "Heurística según tus registros de comida: cada barra es un día y muestra hasta dónde llegó tu ayuno. ⚪ Glucolisis (<12 h, fuera de keto), 🔥 cetosis (12–16 h), 🌀 autofagia (≥16 h). Si comiste algo no KETO (🔴) el nivel baja un escalón. Es orientativo, no médico.";
+    "Heurística según tus registros de comida: cada barra es un día y muestra hasta dónde llegó tu ayuno. 🔥 Cetosis (12–16 h), 🌀 autofagia (≥16 h). Si comés algo no KETO (🔴) bajás al piso de glucolisis y se rompe la cetosis. Es orientativo, no médico.";
   const helpHidraChart =
     "Objetivo diario de agua = promedio entre 35 ml × tu peso y (talla cm − 100) × 30. Cumplir ≥80% ayuda a mantener cetosis y evitar retención. Regístralo en 💧.";
 
@@ -423,8 +423,9 @@ export default function InicioPage() {
                     Resumen general
                   </Typography>
                   <MetricHelp>
-                    Arriba tu peso (igual que la pestaña Peso) y abajo las barras de metabolismo
-                    diario (a dónde llegó tu ayuno): 🌀 autofagia, 🔥 cetosis, ⚪ glucolisis.
+                    Arriba tu peso (igual que la pestaña Peso), con las barras de tu ayuno diario
+                    (🔥 cetosis, 🌀 autofagia) y la línea de agua (💧), todo sobre la misma línea de
+                    tiempo desde tu primer registro hasta hoy.
                   </MetricHelp>
                   <IconButton
                     size="small"
