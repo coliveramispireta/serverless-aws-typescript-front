@@ -8,6 +8,7 @@ import {
   CardContent,
   Chip,
   Grid,
+  IconButton,
   LinearProgress,
   Typography,
 } from "@mui/material";
@@ -16,6 +17,7 @@ import {
   LocalFireDepartment,
   MonitorWeight,
   NotificationsActive,
+  Share,
   Speed,
   TrendingDown,
   UploadFile,
@@ -28,11 +30,14 @@ import StatCard from "@/components/ui/statcard";
 import UserImportDialog from "@/components/ui/userimportdialog";
 import WeightChart from "@/components/ui/weightchart";
 import {
+  GeneralMetricsChart,
   HydrationChart,
   MetricsCarousel,
   MetricHelp,
   NutritionChart,
 } from "@/components/ui/metricscharts";
+import ShareMetricDialog from "@/components/ui/sharemetricdialog";
+import type { MetricShareData } from "@/components/ui/metricsharecard";
 import useUserData from "@/hooks/useuserdata";
 import usePush from "@/hooks/usepush";
 import {
@@ -62,6 +67,7 @@ export default function InicioPage() {
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [pushMsgOk, setPushMsgOk] = useState(false);
   const [openImport, setOpenImport] = useState(false);
+  const [shareMetric, setShareMetric] = useState<MetricShareData | null>(null);
 
   // Preferencias: locales primero y luego el backend (para que altura/IMC
   // aparezcan en cualquier dispositivo aunque el localStorage esté vacío).
@@ -121,6 +127,55 @@ export default function InicioPage() {
     "Heurística según tus registros de comida: ~12–14 h sin comer sostiene cetosis 🔥; ≥16 h activa autofagia 🌀. Los 🔴 marcan alimentos no KETO que pueden sacarte de cetosis. Es orientativo, no médico.";
   const helpHidraChart =
     "Objetivo diario de agua = promedio entre 35 ml × tu peso y (talla cm − 100) × 30. Cumplir ≥80% ayuda a mantener cetosis y evitar retención. Regístralo en 💧.";
+
+  // ── Datos para compartir cada métrica ──
+  const buildShareGeneral = (): MetricShareData => ({
+    emoji: "📊",
+    titulo: "Mi progreso keto",
+    subtitulo: "Resumen de mis métricas (peso, cetosis, comidas y agua).",
+    stats: [
+      { label: "Peso", value: metrics.pesoActual != null ? `${metrics.pesoActual} kg` : "—" },
+      { label: "Perdida", value: metrics.perdidaTotalKg != null && metrics.perdidaTotalKg > 0 ? `−${metrics.perdidaTotalKg} kg` : "—" },
+      { label: "Agua 7d", value: hydration.cumplimiento7d != null ? `${hydration.cumplimiento7d}%` : "—" },
+    ],
+    nombre: userInfo.userName,
+  });
+
+  const buildSharePeso = (): MetricShareData => ({
+    emoji: "⚖️",
+    titulo: "Mi evolución de peso",
+    subtitulo: `De ${metrics.pesoInicial ?? "—"} kg a ${metrics.pesoActual ?? "—"} kg en KetoFlow.`,
+    stats: [
+      { label: "Peso actual", value: metrics.pesoActual != null ? `${metrics.pesoActual} kg` : "—" },
+      { label: "Perdida", value: metrics.perdidaTotalKg != null && metrics.perdidaTotalKg > 0 ? `−${metrics.perdidaTotalKg} kg` : "—" },
+      { label: "Objetivo", value: metrics.pesoObjetivo != null ? `${metrics.pesoObjetivo} kg` : "—" },
+    ],
+    nombre: userInfo.userName,
+  });
+
+  const buildShareAlimentacion = (): MetricShareData => ({
+    emoji: "🔥",
+    titulo: "Mi cetosis y ayunos",
+    subtitulo: "Días en cetosis y autofagia según mis comidas registradas.",
+    stats: [
+      { label: "Cetosis", value: `${nutritionStats.diasCetosis} días` },
+      { label: "Autofagia", value: `${nutritionStats.diasAutofagia} días` },
+      { label: "Salidas", value: `${nutritionStats.eventosNoKeto}` },
+    ],
+    nombre: userInfo.userName,
+  });
+
+  const buildShareHidratacion = (): MetricShareData => ({
+    emoji: "💧",
+    titulo: "Mi hidratación",
+    subtitulo: "Cumplimiento de mi meta diaria de agua en KetoFlow.",
+    stats: [
+      { label: "Cumpl. 7d", value: hydration.cumplimiento7d != null ? `${hydration.cumplimiento7d}%` : "—" },
+      { label: "Meta", value: hydration.objetivoMl != null ? `${(hydration.objetivoMl / 1000).toFixed(1)} L` : "—" },
+      { label: "Último día", value: hydration.days.length ? `${hydration.days[hydration.days.length - 1].ml} ml` : "—" },
+    ],
+    nombre: userInfo.userName,
+  });
 
   if (loading) {
     return (
@@ -348,21 +403,62 @@ export default function InicioPage() {
         </Card>
       )}
 
-      {/* Métricas en carrusel: peso / alimentación / hidratación */}
+      {/* Métricas en carrusel: general / peso / alimentación / hidratación */}
       <MetricsCarousel
         tabs={[
+          {
+            id: "general",
+            label: "General",
+            content: (
+              <Box>
+                <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
+                    Resumen general
+                  </Typography>
+                  <MetricHelp>
+                    Vista combinada: la línea verde es tu peso (la principal), la ámbar tu ayuno
+                    (cetosis 🔥 / autofagia 🌀), los puntos morados son comidas, los rojos alimentos
+                    no KETO, y la celeste tu hidratación.
+                  </MetricHelp>
+                  <IconButton
+                    size="small"
+                    aria-label="Compartir resumen general"
+                    onClick={() => setShareMetric(buildShareGeneral())}
+                    sx={{ color: "text.secondary" }}
+                  >
+                    <Share fontSize="small" />
+                  </IconButton>
+                </Box>
+                <GeneralMetricsChart
+                  weights={weights}
+                  meals={meals}
+                  liquids={liquids}
+                  targetWeight={prefs.pesoObjetivoKg}
+                  objetivoMl={hydration.objetivoMl}
+                />
+              </Box>
+            ),
+          },
           {
             id: "peso",
             label: "Peso",
             content: (
               <Box>
                 <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-                  <Typography variant="subtitle2" fontWeight={700}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
                     Evolución de peso
                   </Typography>
                   <MetricHelp>{helpPesoChart}</MetricHelp>
+                  <IconButton
+                    size="small"
+                    aria-label="Compartir evolución de peso"
+                    onClick={() => setShareMetric(buildSharePeso())}
+                    sx={{ color: "text.secondary" }}
+                  >
+                    <Share fontSize="small" />
+                  </IconButton>
                 </Box>
-                <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} meals={meals} />
+                <WeightChart weights={weights} targetWeight={prefs.pesoObjetivoKg} />
                 <Box textAlign="center" mt={1}>
                   <Button component={Link} href="/peso" size="small">
                     Registrar peso
@@ -377,10 +473,18 @@ export default function InicioPage() {
             content: (
               <Box>
                 <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-                  <Typography variant="subtitle2" fontWeight={700}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
                     Ayunos y cetosis
                   </Typography>
                   <MetricHelp>{helpAlimChart}</MetricHelp>
+                  <IconButton
+                    size="small"
+                    aria-label="Compartir cetosis y ayunos"
+                    onClick={() => setShareMetric(buildShareAlimentacion())}
+                    sx={{ color: "text.secondary" }}
+                  >
+                    <Share fontSize="small" />
+                  </IconButton>
                 </Box>
                 <NutritionChart stats={nutritionStats} />
               </Box>
@@ -392,10 +496,18 @@ export default function InicioPage() {
             content: (
               <Box>
                 <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
-                  <Typography variant="subtitle2" fontWeight={700}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
                     Cumplimiento de agua
                   </Typography>
                   <MetricHelp>{helpHidraChart}</MetricHelp>
+                  <IconButton
+                    size="small"
+                    aria-label="Compartir hidratación"
+                    onClick={() => setShareMetric(buildShareHidratacion())}
+                    sx={{ color: "text.secondary" }}
+                  >
+                    <Share fontSize="small" />
+                  </IconButton>
                 </Box>
                 <HydrationChart
                   days={hydration.days}
@@ -407,6 +519,9 @@ export default function InicioPage() {
           },
         ]}
       />
+
+      {/* Diálogo de compartir métrica */}
+      <ShareMetricDialog open={shareMetric != null} metric={shareMetric} onClose={() => setShareMetric(null)} />
 
       {/* Ponerme al día (import comidas+agua, sin pesos) */}
       <Card

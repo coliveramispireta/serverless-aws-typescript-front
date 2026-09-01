@@ -376,3 +376,81 @@ export function computeNutritionStats(meals: MealEntry[]): NutritionStats {
     ayunoMasLargo,
   };
 }
+
+// ─── Serie general combinada (peso + cetosis + comidas + hidratación) ──
+
+export interface GeneralDayPoint {
+  date: string; // YYYY-MM-DD (día local)
+  pesoKg?: number;
+  ayunoMaxH?: number;
+  noKeto?: boolean;
+  nComidas?: number;
+  ml?: number;
+  pctHidro?: number; // 0-100 respecto al objetivo diario
+}
+
+/** Etiqueta breve de fecha (DD/MM) para texto */
+function fmtShort(d: string): string {
+  const [, m, day] = d.split("-");
+  return `${day}/${m}`;
+}
+
+/**
+ * Une, por día local, los datos de peso, comidas/cetosis e hidratación en un
+ * solo rango ordenado (unión de días con algún registro). Cada día puede
+ * tener solo algunas series. Se usa en la vista "General" combinada.
+ */
+export function buildGeneralSeries(
+  weights: WeightEntry[],
+  meals: MealEntry[],
+  liquids: LiquidEntry[],
+  objetivoMl?: number
+): { days: GeneralDayPoint[]; startLabel: string; endLabel: string } {
+  const byDate = new Map<string, GeneralDayPoint>();
+
+  const touch = (d: string) => {
+    if (!byDate.has(d)) byDate.set(d, { date: d });
+    return byDate.get(d)!;
+  };
+
+  for (const w of weights) {
+    const key = localDayKey(w.fechaHora);
+    if (!key) continue;
+    touch(key).pesoKg = w.pesoKg;
+  }
+  for (const m of meals) {
+    const key = localDayKey(m.fechaHora);
+    if (!key) continue;
+    const pt = touch(key);
+    pt.nComidas = (pt.nComidas ?? 0) + 1;
+    if (esNoKeto(m)) pt.noKeto = true;
+  }
+  // Cálculo de ayuno máximo por día, reutilizando la heurística de cetosis.
+  for (const n of computeNutritionStats(meals).days) {
+    const pt = touch(n.date);
+    pt.ayunoMaxH = n.ayunoMaxH;
+    pt.noKeto = pt.noKeto || n.noKeto;
+  }
+  for (const l of liquids) {
+    const key = localDayKey(l.fechaHora);
+    if (!key) continue;
+    const pt = touch(key);
+    pt.ml = (pt.ml ?? 0) + l.cantidadMl;
+  }
+
+  for (const pt of Array.from(byDate.values())) {
+    if (pt.ml != null) {
+      pt.pctHidro = objetivoMl && objetivoMl > 0 ? Math.round((pt.ml / objetivoMl) * 100) : 0;
+    }
+  }
+
+  const days = Array.from(byDate.values()).sort((a, b) => (a.date < b.date ? -1 : 1));
+  // Limitar a los últimos ~40 días para no saturar
+  const capped = days.length > 40 ? days.slice(-40) : days;
+
+  return {
+    days: capped,
+    startLabel: fmtShort(capped[0]?.date ?? ""),
+    endLabel: fmtShort(capped[capped.length - 1]?.date ?? ""),
+  };
+}
