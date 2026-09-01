@@ -139,6 +139,7 @@ export default function InicioPage() {
       { label: "Agua 7d", value: hydration.cumplimiento7d != null ? `${hydration.cumplimiento7d}%` : "—" },
     ],
     nombre: userInfo.userName,
+    chart: { kind: "peso", points: buildWeightSeries(weights), target: prefs.pesoObjetivoKg },
   });
 
   const buildSharePeso = (): MetricShareData => ({
@@ -151,6 +152,7 @@ export default function InicioPage() {
       { label: "Objetivo", value: metrics.pesoObjetivo != null ? `${metrics.pesoObjetivo} kg` : "—" },
     ],
     nombre: userInfo.userName,
+    chart: { kind: "peso", points: buildWeightSeries(weights), target: prefs.pesoObjetivoKg },
   });
 
   const buildShareAlimentacion = (): MetricShareData => ({
@@ -163,6 +165,10 @@ export default function InicioPage() {
       { label: "Salidas", value: `${nutritionStats.eventosNoKeto}` },
     ],
     nombre: userInfo.userName,
+    chart: {
+      kind: "metabolismo",
+      days: nutritionStats.days.map((d) => ({ ayunoMaxH: d.ayunoMaxH, noKeto: d.noKeto })),
+    },
   });
 
   const buildShareHidratacion = (): MetricShareData => ({
@@ -175,6 +181,7 @@ export default function InicioPage() {
       { label: "Último día", value: hydration.days.length ? `${hydration.days[hydration.days.length - 1].ml} ml` : "—" },
     ],
     nombre: userInfo.userName,
+    chart: { kind: "agua", pct: hydration.days.map((d) => d.pct) },
   });
 
   if (loading) {
