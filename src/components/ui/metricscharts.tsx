@@ -459,9 +459,20 @@ export function GeneralMetricsChart({
   const n = days.length;
   const plotW = GW - GPAD_L - GPAD_R;
   const plotH = GH - GPAD_T - GPAD_B;
-  const x = (i: number) => GPAD_L + (n === 1 ? 0.5 : i / (n - 1)) * plotW;
-  const slot = plotW / Math.max(n, 1);
-  const barW = Math.min(16, slot * 0.55);
+
+  // Eje X por FECHA REAL (tiempo), no por índice: todas las capas (peso, metab,
+  // agua) comparten el mismo eje temporal para ocupar todo el ancho y quedar
+  // alineadas verticalmente. El 1er día del rango = izquierda, el último = derecha.
+  const DAY_MS = 1000 * 60 * 60 * 24;
+  const tStart = new Date(days[0].date).getTime();
+  const tEnd = new Date(days[days.length - 1].date).getTime();
+  const spanMs = Math.max(DAY_MS, tEnd - tStart);
+  const xByDate = (date: string) =>
+    GPAD_L + ((new Date(date).getTime() - tStart) / spanMs) * plotW;
+
+  // Ancho de las barras según el espacio de ~1 día en el eje temporal
+  const daySpanUnits = spanMs / DAY_MS;
+  const barW = Math.min(16, (plotW / Math.max(1, daySpanUnits)) * 0.55);
 
   // Escala de peso (kg)
   const kgVals = days.map((d) => d.pesoKg).filter((v): v is number => v != null);
@@ -489,11 +500,11 @@ export function GeneralMetricsChart({
   const yWater = (pct: number) => GPAD_T + (1 - pct / waterMax) * plotH;
 
   const linePoints = days
-    .map((d, i) => (d.pesoKg != null ? `${x(i)},${yKg(d.pesoKg)}` : null))
+    .map((d) => (d.pesoKg != null ? `${xByDate(d.date)},${yKg(d.pesoKg)}` : null))
     .filter((p): p is string => p != null)
     .join(" ");
   const waterPoints = days
-    .map((d, i) => (d.pctHidro != null ? `${x(i)},${yWater(d.pctHidro)}` : null))
+    .map((d) => (d.pctHidro != null ? `${xByDate(d.date)},${yWater(d.pctHidro)}` : null))
     .filter((p): p is string => p != null)
     .join(" ");
   const wentDown =
@@ -521,10 +532,11 @@ export function GeneralMetricsChart({
         const base = metabolismZone(d.ayunoMaxH);
         const zone = lowerZoneByNoKeto(base, Boolean(d.noKeto));
         const top = barTopOf(d);
+        const cx = xByDate(d.date);
         return (
           <g key={`m${i}`}>
             <rect
-              x={x(i) - barW / 2}
+              x={cx - barW / 2}
               y={top}
               width={barW}
               height={Math.max(2, yAyuno(0) - top)}
@@ -538,7 +550,7 @@ export function GeneralMetricsChart({
               <title>ayuno {fmtH(d.ayunoMaxH ?? 0)}</title>
             </rect>
             {active && d.noKeto && (
-              <text x={x(i)} y={GPAD_T + 3} textAnchor="middle" fontSize={8}>🔴</text>
+              <text x={cx} y={GPAD_T + 3} textAnchor="middle" fontSize={8}>🔴</text>
             )}
           </g>
         );
@@ -561,7 +573,7 @@ export function GeneralMetricsChart({
         />
         {days.map((d, i) =>
           d.pctHidro != null ? (
-            <circle key={`w${i}`} cx={x(i)} cy={yWater(d.pctHidro)} r={2} fill={C_WATER} opacity={active ? 1 : 0.7} />
+            <circle key={`w${i}`} cx={xByDate(d.date)} cy={yWater(d.pctHidro)} r={2} fill={C_WATER} opacity={active ? 1 : 0.7} />
           ) : null
         )}
       </g>
@@ -593,17 +605,17 @@ export function GeneralMetricsChart({
           d.pesoKg != null ? (
             <g key={`kg${i}`}>
               {showKgLabel(i) && (
-                <text x={x(i)} y={yKg(d.pesoKg) - 6} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#64748b">
+                <text x={xByDate(d.date)} y={yKg(d.pesoKg) - 6} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#64748b">
                   {d.pesoKg}
                 </text>
               )}
               {i === days.length - 1 && n > 1 ? (
                 <>
-                  <circle cx={x(i)} cy={yKg(d.pesoKg)} r={4} fill={weightColor} opacity={weightOpacity} />
-                  <circle cx={x(i)} cy={yKg(d.pesoKg)} r={7} fill={weightColor} opacity={0.2 * weightOpacity} />
+                  <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={4} fill={weightColor} opacity={weightOpacity} />
+                  <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={7} fill={weightColor} opacity={0.2 * weightOpacity} />
                 </>
               ) : (
-                <circle cx={x(i)} cy={yKg(d.pesoKg)} r={3} fill={weightColor} stroke="#fff" strokeWidth={1} opacity={weightOpacity} />
+                <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={3} fill={weightColor} stroke="#fff" strokeWidth={1} opacity={weightOpacity} />
               )}
             </g>
           ) : null
