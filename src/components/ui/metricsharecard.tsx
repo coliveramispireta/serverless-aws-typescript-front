@@ -41,6 +41,8 @@ const CPAD_L = 10;
 const CPAD_R = 10;
 const CPAD_T = 12;
 const CPAD_B = 14;
+/** Altura de render (px) en el card compartido. Fija para que html-to-image no la pierda. */
+const SVG_RENDER_H = 240;
 
 function fmtDate2(isoDate: string): string {
   const [, m, d] = isoDate.split("-");
@@ -94,7 +96,7 @@ function PesoMiniChart({ points, target }: { points: { kg: number; date: string 
   const last = points[points.length - 1];
 
   return (
-    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block" }} role="img" aria-label="Evolución de peso">
+    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block", width: "100%", height: SVG_RENDER_H }} role="img" aria-label="Evolución de peso">
       {target != null && (
         <>
           <line x1={CPAD_L} x2={CW - CPAD_R} y1={y(target)} y2={y(target)} stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} strokeDasharray="6 5" />
@@ -149,7 +151,7 @@ function MetabMiniChart({ days }: { days: { ayunoMaxH?: number; noKeto: boolean 
     generalZoneColor(lowerByNoKeto(metabZone(d.ayunoMaxH), d.noKeto));
 
   return (
-    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block" }} role="img" aria-label="Metabolismo diario">
+    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block", width: "100%", height: SVG_RENDER_H }} role="img" aria-label="Metabolismo diario">
       <rect x={CPAD_L} y={y16} width={CW - CPAD_L - CPAD_R} height={y(0) - y16} fill={C_AUT} opacity={0.14} />
       <rect x={CPAD_L} y={y12} width={CW - CPAD_L - CPAD_R} height={y16 - y12} fill={C_CET} opacity={0.14} />
       <line x1={CPAD_L} x2={CW - CPAD_R} y1={y16} y2={y16} stroke={C_AUT} strokeWidth={1} strokeDasharray="5 4" />
@@ -182,7 +184,7 @@ function AguaMiniChart({ pct }: { pct: number[] }) {
   const y = (p: number) => CPAD_T + (1 - p / 100) * (CH - CPAD_T - CPAD_B);
 
   return (
-    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block" }} role="img" aria-label="Cumplimiento de agua">
+    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block", width: "100%", height: SVG_RENDER_H }} role="img" aria-label="Cumplimiento de agua">
       <line x1={CPAD_L} x2={CW - CPAD_R} y1={y(100)} y2={y(100)} stroke="#7dd3fc" strokeWidth={1} strokeDasharray="5 4" opacity={0.7} />
       <text x={CPAD_L + 4} y={y(100) - 5} fontSize={15} fontWeight={800} fill="#7dd3fc">100%</text>
       {pct.map((p, i) => {
@@ -241,16 +243,16 @@ export default function MetricShareCard({
         justifyContent: "center",
         textAlign: "center",
         boxSizing: "border-box",
-        padding: "56px",
+        padding: "44px",
       }}
     >
-      <Typography sx={{ fontSize: 96, lineHeight: 1.15 }}>{data.emoji}</Typography>
+      <Typography sx={{ fontSize: 72, lineHeight: 1.1 }}>{data.emoji}</Typography>
 
       <Typography
         sx={{
           color: "#f8fafc",
           fontWeight: 900,
-          fontSize: 46,
+          fontSize: 40,
           lineHeight: 1.1,
           mt: 0.5,
           px: 4,
@@ -264,8 +266,8 @@ export default function MetricShareCard({
         <Typography
           sx={{
             color: "rgba(248,250,252,0.8)",
-            fontSize: 22,
-            lineHeight: 1.4,
+            fontSize: 20,
+            lineHeight: 1.3,
             mt: 0.5,
             px: 4,
             maxWidth: 880,
@@ -276,7 +278,7 @@ export default function MetricShareCard({
       )}
 
       {/* Gráfico de la métrica */}
-      <Box sx={{ width: "92%", mt: 2.5, px: 1 }}>
+      <Box sx={{ width: "94%", mt: 2, px: 1 }}>
         <ChartFor chart={data.chart} />
       </Box>
 
@@ -284,9 +286,9 @@ export default function MetricShareCard({
         sx={{
           display: "grid",
           gridTemplateColumns: data.stats.length >= 3 ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
-          gap: "20px",
-          width: "88%",
-          mt: 3,
+          gap: "18px",
+          width: "90%",
+          mt: 2,
         }}
       >
         {data.stats.map((st) => (
@@ -295,14 +297,14 @@ export default function MetricShareCard({
             sx={{
               bgcolor: "rgba(255,255,255,0.08)",
               borderRadius: 3,
-              p: "18px 12px",
+              p: "16px 12px",
               border: "1px solid rgba(255,255,255,0.12)",
             }}
           >
-            <Typography sx={{ color: "#a7f3d0", fontSize: 28, fontWeight: 900 }}>
+            <Typography sx={{ color: "#a7f3d0", fontSize: 26, fontWeight: 900 }}>
               {st.value}
             </Typography>
-            <Typography sx={{ color: "rgba(248,250,252,0.7)", fontSize: 18, mt: 0.5 }}>
+            <Typography sx={{ color: "rgba(248,250,252,0.7)", fontSize: 17, mt: 0.5 }}>
               {st.label}
             </Typography>
           </Box>
@@ -312,10 +314,10 @@ export default function MetricShareCard({
       <Typography
         sx={{
           color: "rgba(248,250,252,0.6)",
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: 700,
           letterSpacing: 1,
-          mt: 3,
+          mt: 2.5,
           textTransform: "uppercase",
         }}
       >

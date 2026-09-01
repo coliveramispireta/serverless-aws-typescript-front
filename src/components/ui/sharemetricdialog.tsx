@@ -93,6 +93,7 @@ export default function ShareMetricDialog({ open, metric, onClose }: ShareMetric
       await shareNodeAsImage(cardRef.current, "ketoflow-metrica.png", {
         title: metric.titulo,
         text: shareText,
+        size: { width: METRIC_CARD_SIZE, height: METRIC_CARD_SIZE },
       });
     } catch {
       setError("No se pudo generar la imagen. Intenta con otras vías.");
@@ -133,16 +134,21 @@ export default function ShareMetricDialog({ open, metric, onClose }: ShareMetric
           </Box>
         </Box>
 
-        {/* Nodo oculto en tamaño completo para el PNG */}
+        {/* Nodo oculto en tamaño completo para el PNG.
+            Se mantiene dentro del viewport pero invisible (opacity 0) para que el
+            navegador le dé layout/render real y html-to-image lo capture bien. */}
         <Box
           ref={cardRef}
           sx={{
             position: "fixed",
-            left: -100000,
+            left: 0,
             top: 0,
-            zIndex: -1,
+            zIndex: -5,
             width: METRIC_CARD_SIZE,
             height: METRIC_CARD_SIZE,
+            opacity: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
           }}
         >
           {preview && <MetricShareCard data={metric} />}

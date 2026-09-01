@@ -15,15 +15,23 @@ export function canSystemShare(): boolean {
 export async function captureNodeToBlob(
   node: HTMLElement,
   filename: string,
-  pixelRatio = 2
+  pixelRatio = 2,
+  size?: { width: number; height: number }
 ): Promise<{ blob: Blob; file: File } | null> {
   if (!node) return null;
   try {
+    // En nodos ocultos (fuera de pantalla) offsetWidth/height pueden ser 0,
+    // lo que produce una captura vacía/negra. Usar dimensiones explícitas
+    // cuando se proveen; si no, caer al offset (y al menos 1px).
+    const width = size?.width ?? Math.max(1, node.offsetWidth);
+    const height = size?.height ?? Math.max(1, node.offsetHeight);
     const dataUrl = await toPng(node, {
       pixelRatio,
       cacheBust: true,
-      width: node.offsetWidth,
-      height: node.offsetHeight,
+      width,
+      height,
+      canvasWidth: width * pixelRatio,
+      canvasHeight: height * pixelRatio,
     });
     const blob = await (await fetch(dataUrl)).blob();
     return { blob, file: new File([blob], filename, { type: "image/png" }) };
@@ -54,9 +62,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
 export async function shareNodeAsImage(
   node: HTMLElement,
   filename: string,
-  opts?: { title?: string; text?: string }
+  opts?: { title?: string; text?: string; size?: { width: number; height: number } }
 ): Promise<boolean> {
-  const captured = await captureNodeToBlob(node, filename);
+  const captured = await captureNodeToBlob(node, filename, 2, opts?.size);
   if (!captured) return false;
   const { blob, file } = captured;
 
