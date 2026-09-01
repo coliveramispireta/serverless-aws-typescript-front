@@ -119,15 +119,21 @@ const zoneLabel: Record<"autofagia" | "cetosis" | "glucolisis", string> = {
  *   y se marca 🔴, porque el tipo de comida rompe la cetosis aunque el ayuno sea largo.
  */
 export function MetabolismChart({ stats }: { stats: NutritionStats }) {
-  if (stats.days.length === 0) {
+  const [rango, setRango] = useState<"todo" | "mes">("todo");
+
+  const allDays = stats.days;
+  if (allDays.length === 0) {
     return (
       <EmptyText>
-        Registra tus comidas para ver tu metabolismo diario (glucolisis, cetosis, autofagia) 🍽️
+        Registra tus comidas para ver tu metabolismo diario (cetosis y autofagia) 🍽️
       </EmptyText>
     );
   }
 
-  const days = stats.days;
+  const days =
+    rango === "mes"
+      ? allDays.slice(-30)
+      : allDays;
   const n = days.length;
   const last = days[n - 1];
   const maxAyuno = Math.max(...days.map((d) => d.ayunoMaxH ?? 0));
@@ -177,12 +183,21 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
       </Typography>
 
       {/* Resumen */}
-      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
+      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1} alignItems="center">
         <Chip size="small" color="info" variant="outlined" label={`🌀 Autofagia ${stats.diasAutofagia} d`} />
         <Chip size="small" color="success" variant="outlined" label={`🔥 Cetosis ${stats.diasCetosis} d`} />
         {stats.eventosNoKeto > 0 && (
           <Chip size="small" color="error" variant="outlined" label={`🔴 ${stats.eventosNoKeto} salida de cetosis`} />
         )}
+        <Chip
+          size="small"
+          clickable
+          onClick={() => setRango(rango === "todo" ? "mes" : "todo")}
+          color={rango === "mes" ? "primary" : "default"}
+          variant={rango === "mes" ? "filled" : "outlined"}
+          label={rango === "mes" ? "ver todo" : "ver solo mes actual"}
+          sx={{ ml: "auto", height: 24, fontSize: 11 }}
+        />
       </Box>
 
       <svg viewBox={`0 0 ${MW} ${MH}`} width="100%" role="img" aria-label="Metabolismo diario (cetosis y autofagia)">
@@ -288,7 +303,7 @@ function barColor(pct: number): string {
  * - Puntos con color según el % de cumplimiento de ese día.
  */
 export function HydrationChart({
-  days,
+  days: allDays,
   objetivoMl,
   cumplimiento7d,
 }: {
@@ -296,7 +311,9 @@ export function HydrationChart({
   objetivoMl?: number;
   cumplimiento7d?: number;
 }) {
-  if (days.length === 0) {
+  const [rango, setRango] = useState<"todo" | "mes">("todo");
+
+  if (allDays.length === 0) {
     return (
       <EmptyText>
         Registra tus líquidos (💧 en Alimentación) para ver tu cumplimiento de agua
@@ -304,6 +321,7 @@ export function HydrationChart({
     );
   }
 
+  const days = rango === "mes" ? allDays.slice(-30) : allDays;
   const n = days.length;
   const last = days[n - 1];
   const values = days.map((d) => d.ml);
@@ -313,6 +331,15 @@ export function HydrationChart({
 
   const x = (i: number) => HPAD_X + (n === 1 ? 0.5 : i / (n - 1)) * (HW - 2 * HPAD_X);
   const y = (ml: number) => HPAD_Y + (1 - ml / yMax) * (HH - 2 * HPAD_Y);
+
+  // Ticks del eje Y en ml (pasos redondos de 0,5 L)
+  const waterTicks: number[] = (() => {
+    const rough = yMax / 4;
+    const step = rough <= 250 ? 250 : rough <= 500 ? 500 : rough <= 1000 ? 1000 : 2000;
+    const ticks: number[] = [];
+    for (let v = 0; v <= yMax + 1e-9; v += step) ticks.push(v);
+    return ticks.length >= 2 ? ticks : [0, yMax];
+  })();
 
   const linePoints = days.map((d, i) => `${x(i)},${y(d.ml)}`).join(" ");
   const areaPath =
@@ -324,7 +351,7 @@ export function HydrationChart({
 
   return (
     <Box>
-      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
+      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1} alignItems="center">
         {objetivoMl ? (
           <Chip size="small" variant="outlined" label={`🎯 Meta ${(objetivoMl / 1000).toFixed(1)} L/día`} />
         ) : (
@@ -338,6 +365,15 @@ export function HydrationChart({
             sx={{ color: barColor(cumplimiento7d), borderColor: barColor(cumplimiento7d), fontWeight: 700 }}
           />
         )}
+        <Chip
+          size="small"
+          clickable
+          onClick={() => setRango(rango === "todo" ? "mes" : "todo")}
+          color={rango === "mes" ? "primary" : "default"}
+          variant={rango === "mes" ? "filled" : "outlined"}
+          label={rango === "mes" ? "ver todo" : "ver solo mes actual"}
+          sx={{ ml: "auto", height: 24, fontSize: 11 }}
+        />
       </Box>
 
       <Typography variant="caption" color="text.secondary" display="block" mb={1}>
@@ -345,8 +381,8 @@ export function HydrationChart({
       </Typography>
 
       <svg viewBox={`0 0 ${HW} ${HH}`} width="100%" role="img" aria-label="Agua diaria en mililitros">
-        {/* Eje Y en ml: 0, 50%, 100% de la meta (o pasos) */}
-        {(objetivoMl != null ? [0, objetivoMl / 2, objetivoMl] : [0, yMax / 2, yMax]).map((v, vi) => (
+        {/* Eje Y en ml: pasos redondos */}
+        {waterTicks.map((v, vi) => (
           <g key={`yt${vi}`}>
             <line x1={HPAD_X} x2={HW - HPAD_X} y1={y(v)} y2={y(v)} stroke="#e2e8f0" strokeWidth={0.6} />
             <text x={HPAD_X - 3} y={y(v) + 2.5} textAnchor="end" fontSize={8} fill="#94a3b8">
@@ -466,8 +502,20 @@ export function GeneralMetricsChart({
   targetWeight,
   objetivoMl,
 }: GeneralChartProps) {
-  const { days } = buildGeneralSeries(weights, meals, liquids, objetivoMl);
+  const { days: allDays } = buildGeneralSeries(weights, meals, liquids, objetivoMl);
   const [focus, setFocus] = useState<GeneralFocus>("peso");
+  const [rango, setRango] = useState<"todo" | "mes">("todo");
+
+  // Rango temporal: "todo" = data completa desde el 1er dato hasta hoy;
+  // "mes" = últimos ~30 días.
+  const days = (() => {
+    if (rango !== "mes" || allDays.length === 0) return allDays;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 29);
+    cutoff.setHours(0, 0, 0, 0);
+    const cutKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+    return allDays.filter((d) => d.date >= cutKey);
+  })();
 
   const hasWeight = days.some((d) => d.pesoKg != null);
   const hasMetab = days.some((d) => d.ayunoMaxH != null || (d.nComidas ?? 0) > 0);
@@ -513,12 +561,18 @@ export function GeneralMetricsChart({
   range = maxV - minV;
   const yKg = (kg: number) => GPAD_T + (1 - (kg - minV) / range) * plotH;
 
-  // Eje Y de peso: etiquetas + gridlines
+  // Eje Y de peso: ticks "redondos" (paso 1/2/5 ×10^k) que cubran minV..maxV e
+  // incluyan los valores reales de los datos (p.ej. el primer peso 102).
   const yTicks = (() => {
-    const target = Math.min(5, Math.max(3, Math.round(plotH / 40)));
+    const raw = range || 1;
+    const roughStep = raw / 4;
+    const mag = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const norm = roughStep / mag;
+    const step = (norm >= 5 ? 5 : norm >= 2 ? 2 : 1) * mag;
+    const start = Math.ceil(minV / step) * step;
     const ticks: number[] = [];
-    for (let i = 0; i < target; i++) ticks.push(minV + (range * i) / (target - 1));
-    return ticks;
+    for (let v = start; v <= maxV + 1e-9; v += step) ticks.push(v);
+    return ticks.length >= 2 ? ticks : [minV, maxV];
   })();
 
   // Escala de ayuno (horas) para las barras
@@ -542,7 +596,10 @@ export function GeneralMetricsChart({
   const wentDown =
     kgVals.length >= 2 && kgVals[kgVals.length - 1] <= kgVals[0];
   const weightColor = wentDown ? "#059669" : "#f59e0b";
-  const showKgLabel = (i: number) => kgVals.length <= 8 || i === 0 || i === days.length - 1;
+  // Mostrar etiqueta de valor en todos si hay pocos pesos; si no, SOLO el primer
+  // y el último peso (evaluado sobre kgVals, no sobre days) para que el 102 salga.
+  const showKgLabel = (kgIdx: number, totalKg: number) =>
+    totalKg <= 8 || kgIdx === 0 || kgIdx === totalKg - 1;
 
   const weightOpacity = focus === "peso" ? 1 : 0.4;
   const metabOpacity = focus === "metab" ? 0.85 : 0.22;
@@ -633,36 +690,53 @@ export function GeneralMetricsChart({
         />
       )}
       {hasWeight &&
-        days.map((d, i) =>
-          d.pesoKg != null ? (
-            <g key={`kg${i}`}>
-              {showKgLabel(i) && (
-                <text x={xByDate(d.date)} y={yKg(d.pesoKg) - 6} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#64748b">
-                  {d.pesoKg}
-                </text>
-              )}
-              {i === days.length - 1 && n > 1 ? (
-                <>
-                  <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={4} fill={weightColor} opacity={weightOpacity} />
-                  <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={7} fill={weightColor} opacity={0.2 * weightOpacity} />
-                </>
-              ) : (
-                <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={3} fill={weightColor} stroke="#fff" strokeWidth={1} opacity={weightOpacity} />
-              )}
-            </g>
-          ) : null
-        )}
+        (() => {
+          let kgIdx = -1;
+          const totalKg = kgVals.length;
+          return days.map((d, i) => {
+            if (d.pesoKg == null) return null;
+            kgIdx += 1;
+            const nearTop = yKg(d.pesoKg) - 6 < GPAD_T + 1;
+            const labelY = nearTop ? yKg(d.pesoKg) + 14 : yKg(d.pesoKg) - 6;
+            return (
+              <g key={`kg${i}`}>
+                {showKgLabel(kgIdx, totalKg) && (
+                  <text x={xByDate(d.date)} y={labelY} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#64748b">
+                    {d.pesoKg}
+                  </text>
+                )}
+                {i === days.length - 1 && n > 1 ? (
+                  <>
+                    <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={4} fill={weightColor} opacity={weightOpacity} />
+                    <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={7} fill={weightColor} opacity={0.2 * weightOpacity} />
+                  </>
+                ) : (
+                  <circle cx={xByDate(d.date)} cy={yKg(d.pesoKg)} r={3} fill={weightColor} stroke="#fff" strokeWidth={1} opacity={weightOpacity} />
+                )}
+              </g>
+            );
+          });
+        })()}
     </g>
   );
 
   return (
     <Box>
-      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
+      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1} alignItems="center">
         {hasWeight && (
           <Chip size="small" variant="outlined" label={`⚖️ ${kgVals[0] ?? "—"}→${kgVals[kgVals.length - 1] ?? "—"} kg`} />
         )}
         {hasMetab && <Chip size="small" color="success" variant="outlined" label="🔬 metabolismo" />}
         {hasWater && <Chip size="small" variant="outlined" label="💧 agua" />}
+        <Chip
+          size="small"
+          clickable
+          onClick={() => setRango(rango === "todo" ? "mes" : "todo")}
+          color={rango === "mes" ? "primary" : "default"}
+          variant={rango === "mes" ? "filled" : "outlined"}
+          label={rango === "mes" ? "ver todo" : "ver solo mes actual"}
+          sx={{ ml: "auto", height: 24, fontSize: 11 }}
+        />
       </Box>
 
       <Typography variant="caption" color="text.secondary" display="block" mb={1}>

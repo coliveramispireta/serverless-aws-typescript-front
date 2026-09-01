@@ -204,8 +204,7 @@ export function computeHydrationStats(
   }
 
   const dates = Array.from(byDay.keys()).sort();
-  const recent = dates.slice(-14);
-  const days: HydrationDayStats[] = recent.map((date) => {
+  const days: HydrationDayStats[] = dates.map((date) => {
     const ml = byDay.get(date)!;
     return {
       date,
@@ -328,8 +327,7 @@ export function computeNutritionStats(meals: MealEntry[]): NutritionStats {
     ayunoNocturno.set(dates[i], round1((nextFirst - thisLast) / HOUR_MS));
   }
 
-  const recent = dates.slice(-14);
-  const days: NutritionDayStats[] = recent.map((dateKey) => {
+  const days: NutritionDayStats[] = dates.map((dateKey) => {
     const day = byDay.get(dateKey)!;
     const sorted = [...day.times].sort((a, b) => a - b);
     const primera = sorted[0];
@@ -396,6 +394,67 @@ function fmtShort(d: string): string {
 }
 
 /**
+ * Calcula, por día local, el ayuno máximo y si hubo comida no KETO, a partir de
+ * TODAS las comidas (sin límite de días). Reutiliza la heurística de cetosis.
+ * Se usa en `buildGeneralSeries` para que el metabolismo cubra el mismo rango
+ * que el peso (y no se trunque a los últimos 14 días).
+ */
+function ayunoPorDia(
+  meals: MealEntry[]
+): Map<string, { ayunoMaxH?: number; noKeto: boolean }> {
+  const out = new Map<string, { ayunoMaxH?: number; noKeto: boolean }>();
+  if (meals.length === 0) return out;
+
+  // Agrupar en comidas: items con <10 min de diferencia = mismo bloque.
+  const ordered = [...meals].sort(
+    (a, b) => toDate(a.fechaHora).getTime() - toDate(b.fechaHora).getTime(),
+  );
+  const clusters: { time: number; iso: string; items: MealEntry[] }[] = [];
+  for (const meal of ordered) {
+    const t = toDate(meal.fechaHora).getTime();
+    const last = clusters[clusters.length - 1];
+    if (last && t - last.time < CLUSTER_MS) {
+      last.items.push(meal);
+    } else {
+      clusters.push({ time: t, iso: meal.fechaHora, items: [meal] });
+    }
+  }
+
+  // Por día local.
+  const byDay = new Map<string, { first: number; last: number; times: number[]; noKeto: boolean }>();
+  for (const c of clusters) {
+    const key = localDayKey(c.iso);
+    if (!key) continue;
+    const day = byDay.get(key) ?? { first: c.time, last: c.time, times: [], noKeto: false };
+    day.times.push(c.time);
+    if (c.time < day.first) day.first = c.time;
+    if (c.time > day.last) day.last = c.time;
+    if (c.items.some((it) => esNoKeto(it))) day.noKeto = true;
+    byDay.set(key, day);
+  }
+
+  const dates = Array.from(byDay.keys()).sort();
+  const ayunoNocturno = new Map<string, number>();
+  for (let i = 0; i < dates.length - 1; i++) {
+    const nextFirst = byDay.get(dates[i + 1])!.first;
+    const thisLast = byDay.get(dates[i])!.last;
+    ayunoNocturno.set(dates[i], round1((nextFirst - thisLast) / HOUR_MS));
+  }
+
+  for (const dateKey of dates) {
+    const day = byDay.get(dateKey)!;
+    const sorted = [...day.times].sort((a, b) => a - b);
+    let intradayMax = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      intradayMax = Math.max(intradayMax, (sorted[i] - sorted[i - 1]) / HOUR_MS);
+    }
+    const ayunoMaxH = round1(Math.max(intradayMax, ayunoNocturno.get(dateKey) ?? 0));
+    out.set(dateKey, { ayunoMaxH, noKeto: day.noKeto });
+  }
+  return out;
+}
+
+/**
  * Une, por día local, los datos de peso, comidas/cetosis e hidratación en un
  * solo rango ordenado (unión de días con algún registro). Cada día puede
  * tener solo algunas series. Se usa en la vista "General" combinada.
@@ -425,12 +484,13 @@ export function buildGeneralSeries(
     pt.nComidas = (pt.nComidas ?? 0) + 1;
     if (esNoKeto(m)) pt.noKeto = true;
   }
-  // Cálculo de ayuno máximo por día, reutilizando la heurística de cetosis.
-  for (const n of computeNutritionStats(meals).days) {
-    const pt = touch(n.date);
-    pt.ayunoMaxH = n.ayunoMaxH;
-    pt.noKeto = pt.noKeto || n.noKeto;
-  }
+  // Ayuno máximo por día para TODO el rango (sin truncar a los últimos 14 días),
+  // para que las barras de metabolismo arranquen el mismo día que el peso.
+  ayunoPorDia(meals).forEach((v, date) => {
+    const pt = touch(date);
+    pt.ayunoMaxH = v.ayunoMaxH;
+    pt.noKeto = pt.noKeto || v.noKeto;
+  });
   for (const l of liquids) {
     const key = localDayKey(l.fechaHora);
     if (!key) continue;
@@ -445,12 +505,10 @@ export function buildGeneralSeries(
   }
 
   const days = Array.from(byDate.values()).sort((a, b) => (a.date < b.date ? -1 : 1));
-  // Limitar a los últimos ~40 días para no saturar
-  const capped = days.length > 40 ? days.slice(-40) : days;
 
   return {
-    days: capped,
-    startLabel: fmtShort(capped[0]?.date ?? ""),
-    endLabel: fmtShort(capped[capped.length - 1]?.date ?? ""),
+    days,
+    startLabel: fmtShort(days[0]?.date ?? ""),
+    endLabel: fmtShort(days[days.length - 1]?.date ?? ""),
   };
 }

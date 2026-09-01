@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Box, Chip, Typography } from "@mui/material";
 import { buildWeightSeries } from "@/lib/engine/metrics";
 import { WeightEntry } from "@/model/keto.models";
@@ -22,9 +23,19 @@ const PLOT_BOTTOM = 138; // base del área del peso
  * - Solo peso y meta: las comidas ya no se mezclan en este gráfico.
  */
 export default function WeightChart({ weights, targetWeight }: WeightChartProps) {
-  const series = buildWeightSeries(weights);
+  const [rango, setRango] = useState<"todo" | "mes">("todo");
+  const allSeries = buildWeightSeries(weights);
 
-  if (series.length < 2) {
+  const series =
+    rango === "mes"
+      ? allSeries.filter(
+          (p) =>
+            dayjs(p.date).isAfter(dayjs().subtract(29, "day").startOf("day")) ||
+            dayjs(p.date).isSame(dayjs().subtract(29, "day").startOf("day"))
+        )
+      : allSeries;
+
+  if (allSeries.length < 2) {
     return (
       <Box display="flex" alignItems="center" justifyContent="center" minHeight={120}>
         <Typography variant="body2" color="text.secondary" textAlign="center">
@@ -34,7 +45,10 @@ export default function WeightChart({ weights, targetWeight }: WeightChartProps)
     );
   }
 
-  const values = series.map((p) => p.kg);
+  // Si al acotar al mes quedan menos de 2 pesos, volvemos al rango completo.
+  const useSeries = series.length < 2 ? allSeries : series;
+
+  const values = useSeries.map((p) => p.kg);
   let minV = Math.min(...values);
   let maxV = Math.max(...values);
   if (targetWeight != null) {
@@ -49,38 +63,55 @@ export default function WeightChart({ weights, targetWeight }: WeightChartProps)
   range = maxV - minV;
 
   // Fecha real (ms) de cada punto de peso
-  const startMs = dayjs(series[0].date).valueOf();
-  const endMs = dayjs(series[series.length - 1].date).valueOf();
+  const startMs = dayjs(useSeries[0].date).valueOf();
+  const endMs = dayjs(useSeries[useSeries.length - 1].date).valueOf();
   const spanMs = Math.max(1, endMs - startMs);
 
   const xMs = (t: number) => PAD_X + ((t - startMs) / spanMs) * (W - 2 * PAD_X);
-  const x = (i: number) => xMs(dayjs(series[i].date).valueOf());
+  const x = (i: number) => xMs(dayjs(useSeries[i].date).valueOf());
   const y = (kg: number) => PLOT_TOP + (1 - (kg - minV) / range) * (PLOT_BOTTOM - PLOT_TOP);
 
-  const linePoints = series.map((p, i) => `${x(i)},${y(p.kg)}`).join(" ");
+  const linePoints = useSeries.map((p, i) => `${x(i)},${y(p.kg)}`).join(" ");
   const areaPath = `M ${x(0)},${PLOT_BOTTOM} L ${linePoints.split(" ").join(" L ")} L ${x(
-    series.length - 1
+    useSeries.length - 1
   )},${PLOT_BOTTOM} Z`;
 
-  const firstKg = series[0].kg;
-  const lastKg = series[series.length - 1].kg;
+  const firstKg = useSeries[0].kg;
+  const lastKg = useSeries[useSeries.length - 1].kg;
   const wentDown = lastKg <= firstKg;
   const strokeColor = wentDown ? "#059669" : "#f59e0b";
 
   // Etiquetas de kg: todas si hay pocos puntos; si no, primero y último
   const showKgLabel = (i: number) =>
-    series.length <= 8 || i === 0 || i === series.length - 1;
+    useSeries.length <= 8 || i === 0 || i === useSeries.length - 1;
 
-  // Eje Y de kg: 3-5 ticks con gridlines
+  // Eje Y de kg: ticks "redondos" (paso 1/2/5×10^k) que cubran el rango e incluyan
+  // los valores reales (p.ej. el primer peso 102).
   const yTicks: number[] = (() => {
-    const count = 4;
-    const out: number[] = [];
-    for (let i = 0; i < count; i++) out.push(minV + (range * i) / (count - 1));
-    return out;
+    const raw = range || 1;
+    const rough = raw / 4;
+    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    const norm = rough / mag;
+    const step = (norm >= 5 ? 5 : norm >= 2 ? 2 : 1) * mag;
+    const start = Math.ceil(minV / step) * step;
+    const ticks: number[] = [];
+    for (let v = start; v <= maxV + 1e-9; v += step) ticks.push(v);
+    return ticks.length >= 2 ? ticks : [minV, maxV];
   })();
 
   return (
     <Box>
+      <Box display="flex" justifyContent="flex-end" mb={0.5}>
+        <Chip
+          size="small"
+          clickable
+          onClick={() => setRango(rango === "todo" ? "mes" : "todo")}
+          color={rango === "mes" ? "primary" : "default"}
+          variant={rango === "mes" ? "filled" : "outlined"}
+          label={rango === "mes" ? "ver todo" : "ver solo mes actual"}
+          sx={{ height: 24, fontSize: 11 }}
+        />
+      </Box>
       <Typography variant="caption" color="text.secondary" display="block" mb={1}>
         Evolución de tu peso registrado. La línea baja = pérdida 🎉. La punteada es tu meta.
       </Typography>
@@ -126,30 +157,34 @@ export default function WeightChart({ weights, targetWeight }: WeightChartProps)
         />
 
         {/* Puntos + etiquetas de kg */}
-        {series.map((p, i) => (
-          <g key={`${p.date}-${i}`}>
-            {showKgLabel(i) && (
-              <text
-                x={x(i)}
-                y={y(p.kg) - 6}
-                textAnchor="middle"
-                fontSize={8.5}
-                fontWeight={700}
-                fill="#64748b"
-              >
-                {p.kg}
-              </text>
-            )}
-            {i === series.length - 1 ? (
-              <>
-                <circle cx={x(i)} cy={y(p.kg)} r={4} fill={strokeColor} />
-                <circle cx={x(i)} cy={y(p.kg)} r={7} fill={strokeColor} opacity={0.2} />
-              </>
-            ) : (
-              <circle cx={x(i)} cy={y(p.kg)} r={3} fill={strokeColor} stroke="#fff" strokeWidth={1} />
-            )}
-          </g>
-        ))}
+        {useSeries.map((p, i) => {
+          const nearTop = y(p.kg) - 6 < PLOT_TOP + 1;
+          const labelY = nearTop ? y(p.kg) + 14 : y(p.kg) - 6;
+          return (
+            <g key={`${p.date}-${i}`}>
+              {showKgLabel(i) && (
+                <text
+                  x={x(i)}
+                  y={labelY}
+                  textAnchor="middle"
+                  fontSize={8.5}
+                  fontWeight={700}
+                  fill="#64748b"
+                >
+                  {p.kg}
+                </text>
+              )}
+              {i === useSeries.length - 1 ? (
+                <>
+                  <circle cx={x(i)} cy={y(p.kg)} r={4} fill={strokeColor} />
+                  <circle cx={x(i)} cy={y(p.kg)} r={7} fill={strokeColor} opacity={0.2} />
+                </>
+              ) : (
+                <circle cx={x(i)} cy={y(p.kg)} r={3} fill={strokeColor} stroke="#fff" strokeWidth={1} />
+              )}
+            </g>
+          );
+        })}
       </svg>
 
       <Box display="flex" justifyContent="space-between" mt={0.5}>
