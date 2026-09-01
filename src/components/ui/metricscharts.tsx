@@ -229,17 +229,6 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
                 fill={color}
                 opacity={0.85}
               />
-              {/* Hora de ayuno sobre la barra */}
-              <text
-                x={xCenter(i)}
-                y={topY - 4}
-                textAnchor="middle"
-                fontSize={7.5}
-                fontWeight={700}
-                fill="#64748b"
-              >
-                {d.ayunoMaxH != null ? fmtH(d.ayunoMaxH) : "—"}
-              </text>
               {/* Marcador de comida no keto (glucolisis por comer fuera de keto) */}
               {d.noKeto && (
                 <text x={xCenter(i)} y={MPAD_T + 4} textAnchor="middle" fontSize={9}>
@@ -724,10 +713,35 @@ export function GeneralMetricsChart({
     <Box>
       <Box display="flex" flexWrap="wrap" gap={0.5} mb={1} alignItems="center">
         {hasWeight && (
-          <Chip size="small" variant="outlined" label={`⚖️ ${kgVals[0] ?? "—"}→${kgVals[kgVals.length - 1] ?? "—"} kg`} />
+          <Chip
+            size="small"
+            clickable
+            onClick={() => setFocus("peso")}
+            color={focus === "peso" ? "primary" : "default"}
+            variant={focus === "peso" ? "filled" : "outlined"}
+            label={`⚖️ ${kgVals[0] ?? "—"}→${kgVals[kgVals.length - 1] ?? "—"} kg`}
+          />
         )}
-        {hasMetab && <Chip size="small" color="success" variant="outlined" label="🔬 metabolismo" />}
-        {hasWater && <Chip size="small" variant="outlined" label="💧 agua" />}
+        {hasMetab && (
+          <Chip
+            size="small"
+            clickable
+            onClick={() => setFocus("metab")}
+            color={focus === "metab" ? "primary" : "success"}
+            variant={focus === "metab" ? "filled" : "outlined"}
+            label="🔬 metabolismo"
+          />
+        )}
+        {hasWater && (
+          <Chip
+            size="small"
+            clickable
+            onClick={() => setFocus("agua")}
+            color={focus === "agua" ? "primary" : "default"}
+            variant={focus === "agua" ? "filled" : "outlined"}
+            label="💧 agua"
+          />
+        )}
         <Chip
           size="small"
           clickable
