@@ -431,8 +431,9 @@ export default function InicioPage() {
                 <GeneralMetricsChart
                   weights={weights}
                   meals={meals}
+                  liquids={liquids}
                   targetWeight={prefs.pesoObjetivoKg}
-                  stats={nutritionStats}
+                  objetivoMl={hydration.objetivoMl}
                 />
               </Box>
             ),

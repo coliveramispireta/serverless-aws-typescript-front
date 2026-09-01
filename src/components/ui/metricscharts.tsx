@@ -12,9 +12,8 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronLeft, ChevronRight, InfoOutlined } from "@mui/icons-material";
-import { buildWeightSeries, computeNutritionStats, HydrationDayStats, NutritionStats } from "@/lib/engine/metrics";
-import { MealEntry, WeightEntry } from "@/model/keto.models";
-import dayjs from "dayjs";
+import { buildGeneralSeries, HydrationDayStats, NutritionStats } from "@/lib/engine/metrics";
+import { LiquidEntry, MealEntry, WeightEntry } from "@/model/keto.models";
 
 /** Botón de ayuda (tooltip) para explicar métricas y cálculos */
 export function MetricHelp({ children }: { children: ReactNode }) {
@@ -394,51 +393,80 @@ export function HydrationChart({
   );
 }
 
-// ─── Vista General combinada ──────────────────────────────────
+// ─── Vista General combinada (un solo plot con capas interactivas) ──
 
 const GW = 320;
-const GH = 165;
-const GPAD_L = 10;
-const GPAD_R = 10;
+const GH = 185;
+const GPAD_L = 30;
+const GPAD_R = 8;
 const GPAD_T = 18;
 const GPAD_B = 16;
-const C_WEIGHT = "#059669";
+const C_WATER = "#0ea5e9";
+const C_GLU = "#94a3b8";
+const C_CET = "#059669";
+const C_AUT = "#6366f1";
+
+type GeneralFocus = "metab" | "agua" | "peso";
 
 interface GeneralChartProps {
   weights: WeightEntry[];
   meals: MealEntry[];
+  liquids?: LiquidEntry[];
   targetWeight?: number;
-  stats?: NutritionStats;
+  objetivoMl?: number;
+}
+
+/** Baja un escalón la zona metabólica si el día tuvo comida no KETO. */
+function lowerZoneByNoKeto(zone: "autofagia" | "cetosis" | "glucolisis", noKeto: boolean) {
+  if (!noKeto) return zone;
+  if (zone === "autofagia") return "cetosis";
+  if (zone === "cetosis") return "glucolisis";
+  return "glucolisis";
+}
+
+function generalZoneColor(zone: "autofagia" | "cetosis" | "glucolisis"): string {
+  return zone === "autofagia" ? C_AUT : zone === "cetosis" ? C_CET : C_GLU;
 }
 
 /**
- * Gráfico "General" rediseñado: dos paneles apilados y legibles.
- * - Panel superior: línea de peso, idéntica a la pestaña Peso (WeightChart),
- *   con su escala de kg limpia y la línea punteada de objetivo.
- * - Panel inferior: barras de metabolismo diario (MetabolismChart), con las
- *   zonas glucolisis / cetosis / autofagia según el ayuno y la comida no keto.
- * Ya no se superponen escalas incompatibles en un mismo plot.
+ * Gráfico "General": UN solo plot con capas superpuestas y legibles mediante
+ * transparencia + interacción.
+ * - Barras de metabolismo (transparentes) DETRÁS de la línea de peso.
+ * - Línea de hidratación (celeste, semitransparente) en el mismo plot.
+ * - Al hacer clic/tap en una barra o en la línea de agua, esa capa pasa a primer
+ *   plano (z-order superior y mayor opacidad); clic en el fondo/peso la devuelve.
  */
 export function GeneralMetricsChart({
   weights,
   meals,
+  liquids = [],
   targetWeight,
-  stats,
+  objetivoMl,
 }: GeneralChartProps) {
-  const series = buildWeightSeries(weights);
-  const nutrition = stats ?? computeNutritionStats(meals);
+  const { days } = buildGeneralSeries(weights, meals, liquids, objetivoMl);
+  const [focus, setFocus] = useState<GeneralFocus>("peso");
 
-  const hasWeight = series.length > 0;
+  const hasWeight = days.some((d) => d.pesoKg != null);
+  const hasMetab = days.some((d) => d.ayunoMaxH != null || (d.nComidas ?? 0) > 0);
+  const hasWater = days.some((d) => d.ml != null);
 
-  if (!hasWeight && nutrition.days.length === 0) {
+  if (days.length === 0 || (!hasWeight && !hasMetab && !hasWater)) {
     return (
-      <EmptyText>Registra peso y comidas para ver tu resumen general 🎯</EmptyText>
+      <EmptyText>Registra peso, comidas o agua para ver tu resumen general 🎯</EmptyText>
     );
   }
 
-  const values = series.map((p) => p.kg);
-  let minV = values.length ? Math.min(...values) : 0;
-  let maxV = values.length ? Math.max(...values) : 1;
+  const n = days.length;
+  const plotW = GW - GPAD_L - GPAD_R;
+  const plotH = GH - GPAD_T - GPAD_B;
+  const x = (i: number) => GPAD_L + (n === 1 ? 0.5 : i / (n - 1)) * plotW;
+  const slot = plotW / Math.max(n, 1);
+  const barW = Math.min(16, slot * 0.55);
+
+  // Escala de peso (kg)
+  const kgVals = days.map((d) => d.pesoKg).filter((v): v is number => v != null);
+  let minV = kgVals.length ? Math.min(...kgVals) : 0;
+  let maxV = kgVals.length ? Math.max(...kgVals) : 1;
   if (targetWeight != null) {
     minV = Math.min(minV, targetWeight);
     maxV = Math.max(maxV, targetWeight);
@@ -448,94 +476,203 @@ export function GeneralMetricsChart({
   minV -= padV;
   maxV += padV;
   range = maxV - minV;
+  const yKg = (kg: number) => GPAD_T + (1 - (kg - minV) / range) * plotH;
 
-  const startMs = series.length ? dayjs(series[0].date).valueOf() : 0;
-  const endMs = series.length ? dayjs(series[series.length - 1].date).valueOf() : 1;
-  const spanMs = Math.max(1, endMs - startMs);
-  const xMs = (t: number) => GPAD_L + ((t - startMs) / spanMs) * (GW - GPAD_L - GPAD_R);
-  const x = (i: number) => xMs(dayjs(series[i].date).valueOf());
-  const y = (kg: number) => GPAD_T + (1 - (kg - minV) / range) * (GH - GPAD_T - GPAD_B);
+  // Escala de ayuno (horas) para las barras
+  const ayunoMax = Math.max(12, ...days.map((d) => d.ayunoMaxH ?? 0)) + 1;
+  const yAyuno = (h: number) => GPAD_T + (1 - h / ayunoMax) * plotH;
+  const y12 = yAyuno(12);
+  const y16 = yAyuno(16);
 
-  const linePoints = series.map((p, i) => `${x(i)},${y(p.kg)}`).join(" ");
-  const areaPath = hasWeight
-    ? `M ${x(0)},${GH - GPAD_B} L ${linePoints.split(" ").join(" L ")} L ${x(series.length - 1)},${GH - GPAD_B} Z`
-    : "";
-  const wentDown = series.length >= 2 && series[series.length - 1].kg <= series[0].kg;
-  const strokeColor = wentDown ? "#059669" : "#f59e0b";
-  const showKgLabel = (i: number) =>
-    series.length <= 8 || i === 0 || i === series.length - 1;
+  // Escala de hidratación (%)
+  const waterMax = Math.max(100, ...days.map((d) => d.pctHidro ?? 0));
+  const yWater = (pct: number) => GPAD_T + (1 - pct / waterMax) * plotH;
+
+  const linePoints = days
+    .map((d, i) => (d.pesoKg != null ? `${x(i)},${yKg(d.pesoKg)}` : null))
+    .filter((p): p is string => p != null)
+    .join(" ");
+  const waterPoints = days
+    .map((d, i) => (d.pctHidro != null ? `${x(i)},${yWater(d.pctHidro)}` : null))
+    .filter((p): p is string => p != null)
+    .join(" ");
+  const wentDown =
+    kgVals.length >= 2 && kgVals[kgVals.length - 1] <= kgVals[0];
+  const weightColor = wentDown ? "#059669" : "#f59e0b";
+  const showKgLabel = (i: number) => kgVals.length <= 8 || i === 0 || i === days.length - 1;
+
+  const weightOpacity = focus === "peso" ? 1 : 0.4;
+  const metabOpacity = focus === "metab" ? 0.85 : 0.22;
+  const waterOpacity = focus === "agua" ? 1 : 0.5;
+
+  // Altura efectiva de la barra por zona (con el descuento por no-keto)
+  const barTopOf = (d: typeof days[number]): number => {
+    const base = metabolismZone(d.ayunoMaxH);
+    const zone = lowerZoneByNoKeto(base, Boolean(d.noKeto));
+    if (zone === "autofagia") return y16;
+    if (zone === "cetosis") return y12;
+    return Math.max(y12, yAyuno(Math.min(d.ayunoMaxH ?? 0, 12)));
+  };
+
+  /** Barras de metabolismo (capa). `active`: render en primer plano. */
+  const metabLayer = (active: boolean) => (
+    <g>
+      {days.map((d, i) => {
+        const base = metabolismZone(d.ayunoMaxH);
+        const zone = lowerZoneByNoKeto(base, Boolean(d.noKeto));
+        const top = barTopOf(d);
+        return (
+          <g key={`m${i}`}>
+            <rect
+              x={x(i) - barW / 2}
+              y={top}
+              width={barW}
+              height={Math.max(2, yAyuno(0) - top)}
+              rx={3}
+              fill={generalZoneColor(zone)}
+              opacity={active ? 0.8 : metabOpacity}
+              style={{ cursor: "pointer" }}
+              onClick={() => setFocus("metab")}
+              onPointerDown={() => setFocus("metab")}
+            >
+              <title>ayuno {fmtH(d.ayunoMaxH ?? 0)}</title>
+            </rect>
+            {active && d.noKeto && (
+              <text x={x(i)} y={GPAD_T + 3} textAnchor="middle" fontSize={8}>🔴</text>
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+
+  /** Línea de hidratación (capa). `active`: render en primer plano. */
+  const waterLayer = (active: boolean) =>
+    hasWater && n > 1 ? (
+      <g style={{ cursor: "pointer" }} onClick={() => setFocus("agua")} onPointerDown={() => setFocus("agua")}>
+        <polyline
+          points={waterPoints}
+          fill="none"
+          stroke={C_WATER}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={active ? 1 : waterOpacity}
+        />
+        {days.map((d, i) =>
+          d.pctHidro != null ? (
+            <circle key={`w${i}`} cx={x(i)} cy={yWater(d.pctHidro)} r={2} fill={C_WATER} opacity={active ? 1 : 0.7} />
+          ) : null
+        )}
+      </g>
+    ) : null;
+
+  const weightLayer = (
+    <g style={{ cursor: "pointer" }} onClick={() => setFocus("peso")} onPointerDown={() => setFocus("peso")}>
+      {targetWeight != null && (
+        <>
+          <line x1={GPAD_L} x2={GW - GPAD_R} y1={yKg(targetWeight)} y2={yKg(targetWeight)} stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" />
+          <text x={GW - GPAD_R - 2} y={yKg(targetWeight) - 4} textAnchor="end" fontSize={9} fill="#64748b">
+            objetivo {targetWeight} kg
+          </text>
+        </>
+      )}
+      {hasWeight && linePoints && n > 1 && (
+        <polyline
+          points={linePoints}
+          fill="none"
+          stroke={weightColor}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={weightOpacity}
+        />
+      )}
+      {hasWeight &&
+        days.map((d, i) =>
+          d.pesoKg != null ? (
+            <g key={`kg${i}`}>
+              {showKgLabel(i) && (
+                <text x={x(i)} y={yKg(d.pesoKg) - 6} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#64748b">
+                  {d.pesoKg}
+                </text>
+              )}
+              {i === days.length - 1 && n > 1 ? (
+                <>
+                  <circle cx={x(i)} cy={yKg(d.pesoKg)} r={4} fill={weightColor} opacity={weightOpacity} />
+                  <circle cx={x(i)} cy={yKg(d.pesoKg)} r={7} fill={weightColor} opacity={0.2 * weightOpacity} />
+                </>
+              ) : (
+                <circle cx={x(i)} cy={yKg(d.pesoKg)} r={3} fill={weightColor} stroke="#fff" strokeWidth={1} opacity={weightOpacity} />
+              )}
+            </g>
+          ) : null
+        )}
+    </g>
+  );
 
   return (
     <Box>
-      {/* ── Panel 1: Peso ── */}
-      <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={0.5}>
-        ⚖️ Peso {series.length ? `${series[0].kg} → ${series[series.length - 1].kg} kg` : ""}
-      </Typography>
-      {hasWeight ? (
-        <svg viewBox={`0 0 ${GW} ${GH}`} width="100%" role="img" aria-label="Evolución de peso">
-          {targetWeight != null && (
-            <>
-              <line
-                x1={GPAD_L}
-                x2={GW - GPAD_R}
-                y1={y(targetWeight)}
-                y2={y(targetWeight)}
-                stroke="#94a3b8"
-                strokeWidth={1}
-                strokeDasharray="4 4"
-              />
-              <text x={GW - GPAD_R - 2} y={y(targetWeight) - 4} textAnchor="end" fontSize={9} fill="#64748b">
-                objetivo {targetWeight} kg
-              </text>
-            </>
-          )}
-          {areaPath && <path d={areaPath} fill={strokeColor} opacity={0.08} />}
-          {series.length > 1 && (
-            <polyline
-              points={linePoints}
-              fill="none"
-              stroke={strokeColor}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-          {series.map((p, i) => (
-            <g key={`${p.date}-${i}`}>
-              {showKgLabel(i) && (
-                <text
-                  x={x(i)}
-                  y={y(p.kg) - 6}
-                  textAnchor="middle"
-                  fontSize={8.5}
-                  fontWeight={700}
-                  fill="#64748b"
-                >
-                  {p.kg}
-                </text>
-              )}
-              {i === series.length - 1 && series.length > 1 ? (
-                <>
-                  <circle cx={x(i)} cy={y(p.kg)} r={4} fill={strokeColor} />
-                  <circle cx={x(i)} cy={y(p.kg)} r={7} fill={strokeColor} opacity={0.2} />
-                </>
-              ) : (
-                <circle cx={x(i)} cy={y(p.kg)} r={3} fill={strokeColor} stroke="#fff" strokeWidth={1} />
-              )}
-            </g>
-          ))}
-        </svg>
-      ) : (
-        <EmptyText>Registra tu peso para ver la evolución 📈</EmptyText>
-      )}
-
-      {/* ── Panel 2: Metabolismo ── */}
-      <Box mt={2}>
-        <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={0.5}>
-          🔬 Metabolismo diario (a dónde llegó tu ayuno)
-        </Typography>
-        <MetabolismChart stats={nutrition} />
+      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
+        {hasWeight && (
+          <Chip size="small" variant="outlined" label={`⚖️ ${kgVals[0] ?? "—"}→${kgVals[kgVals.length - 1] ?? "—"} kg`} />
+        )}
+        {hasMetab && <Chip size="small" color="success" variant="outlined" label="🔬 metabolismo" />}
+        {hasWater && <Chip size="small" variant="outlined" label="💧 agua" />}
       </Box>
+
+      <svg viewBox={`0 0 ${GW} ${GH}`} width="100%" role="img" aria-label="Resumen general (peso, metabolismo, agua)">
+        {/* Fondo / zona de clic para volver al peso */}
+        <rect x={GPAD_L} y={GPAD_T} width={plotW} height={plotH} fill="transparent" onClick={() => setFocus("peso")} onPointerDown={() => setFocus("peso")} />
+
+        {/* Bandas de zonas metabólicas (decorativas, detrás de todo) */}
+        <rect x={GPAD_L} y={y16} width={plotW} height={yAyuno(0) - y16} fill={C_AUT} opacity={0.06} />
+        <rect x={GPAD_L} y={y12} width={plotW} height={y16 - y12} fill={C_CET} opacity={0.06} />
+        <line x1={GPAD_L} x2={GW - GPAD_R} y1={y16} y2={y16} stroke={C_AUT} strokeWidth={0.8} strokeDasharray="3 3" opacity={0.4} />
+        <line x1={GPAD_L} x2={GW - GPAD_R} y1={y12} y2={y12} stroke={C_CET} strokeWidth={0.8} strokeDasharray="3 3" opacity={0.4} />
+
+        {/* Etiquetas de zonas */}
+        <text x={GW - GPAD_R} y={y16 - 3} textAnchor="end" fontSize={7.5} fontWeight={700} fill="#4f46e5" opacity={0.7}>autofagia</text>
+        <text x={GW - GPAD_R} y={y12 - 3} textAnchor="end" fontSize={7.5} fontWeight={700} fill="#047857" opacity={0.7}>cetosis</text>
+
+        {/* Orden de capas según foco (las enfocadas al final = primer plano) */}
+        {focus === "peso" && (
+          <>
+            {metabLayer(false)}
+            {waterLayer(false)}
+            {weightLayer}
+          </>
+        )}
+        {focus === "metab" && (
+          <>
+            {waterLayer(false)}
+            {weightLayer}
+            {metabLayer(true)}
+          </>
+        )}
+        {focus === "agua" && (
+          <>
+            {metabLayer(false)}
+            {weightLayer}
+            {waterLayer(true)}
+          </>
+        )}
+      </svg>
+
+      <Box display="flex" justifyContent="space-between" mt={0.5}>
+        <Typography variant="caption" color="text.secondary">{fmtDate(days[0].date)}</Typography>
+        <Typography variant="caption" color="text.secondary">{fmtDate(days[n - 1].date)}</Typography>
+      </Box>
+
+      {/* Leyenda interactiva */}
+      <Box display="flex" gap={1.5} justifyContent="center" mt={1} flexWrap="wrap">
+        <LegendDot color={weightColor} text="⚖️ peso" />
+        {hasMetab && <LegendDot color={C_CET} text="🔬 metabolismo" />}
+        {hasWater && <LegendDot color={C_WATER} text="💧 agua" />}
+      </Box>
+      <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={0.5}>
+        Tocá una barra o la línea de agua para ponerla en primer plano
+      </Typography>
     </Box>
   );
 }
