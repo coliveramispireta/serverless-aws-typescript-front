@@ -12,12 +12,9 @@ import {
   Typography,
 } from "@mui/material";
 import { ChevronLeft, ChevronRight, InfoOutlined } from "@mui/icons-material";
-import {
-  buildGeneralSeries,
-  HydrationDayStats,
-  NutritionStats,
-} from "@/lib/engine/metrics";
-import { LiquidEntry, MealEntry, WeightEntry } from "@/model/keto.models";
+import { buildWeightSeries, computeNutritionStats, HydrationDayStats, NutritionStats } from "@/lib/engine/metrics";
+import { MealEntry, WeightEntry } from "@/model/keto.models";
+import dayjs from "dayjs";
 
 /** Botón de ayuda (tooltip) para explicar métricas y cálculos */
 export function MetricHelp({ children }: { children: ReactNode }) {
@@ -70,26 +67,57 @@ function LegendDot({ color, text }: { color: string; text: string }) {
   );
 }
 
-// ─── Alimentación: ayunos y cetosis (gráfica de línea) ─────────
+// ─── Metabolismo: barras diarias de ayuno (glucolisis / cetosis / autofagia) ─
 
-const NW = 320;
-const NH = 170;
-const NPAD_X = 26;
-const NPAD_Y = 18;
-const CETOSIS_H = 12;
-const AUTOFAGIA_H = 16;
+const MW = 320;
+const MH = 175;
+const MPAD_L = 34;
+const MPAD_R = 8;
+const MPAD_T = 14;
+const MPAD_B = 16;
+
+/** Umbrales de zonas metabólicas (horas de ayuno) */
+const MET_GLUCOLISIS_H = 12;
+const MET_CETOSIS_H = 12;
+const MET_AUTOFAGIA_H = 16;
+
+const C_GLUCOLISIS = "#94a3b8";
+const C_CETOSIS = "#059669";
+const C_AUTOFAGIA = "#6366f1";
+
+/** Determina la zona metabólica según las horas de ayuno máximo. */
+export function metabolismZone(ayunoMaxH?: number): "autofagia" | "cetosis" | "glucolisis" {
+  const h = ayunoMaxH ?? 0;
+  if (h >= MET_AUTOFAGIA_H) return "autofagia";
+  if (h >= MET_CETOSIS_H) return "cetosis";
+  return "glucolisis";
+}
+
+function zoneColor(zone: "autofagia" | "cetosis" | "glucolisis"): string {
+  return zone === "autofagia" ? C_AUTOFAGIA : zone === "cetosis" ? C_CETOSIS : C_GLUCOLISIS;
+}
+
+const zoneLabel: Record<"autofagia" | "cetosis" | "glucolisis", string> = {
+  autofagia: "🌀 Autofagia ≥16 h",
+  cetosis: "🔥 Cetosis 12–16 h",
+  glucolisis: "⚪ Glucolisis <12 h",
+};
 
 /**
- * Gráfico de alimentación (línea tipo "peso"):
- * - Eje Y: horas de ayuno máximo por día (con etiquetas y bandas).
- * - Bandas y líneas de umbral que resaltan la zona de cetosis (12–16 h)
- *   y la zona de autofagia (≥16 h).
- * - Puntos con la hora de ayuno y marcador rojo 🔴 en días con no KETO.
+ * Metabolismo = barras diarias de ayuno.
+ * - Una barra por día: la altura = ayuno máximo de ese día (horas).
+ * - De abajo a arriba, el eje Y tiene 3 zonas: glucolisis (fuera de keto, <12 h),
+ *   cetosis (12–16 h) y autofagia (≥16 h).
+ * - La barra se pinta del color de la zona más alta alcanzada. Si ese día hubo
+ *   comida no KETO, el nivel efectivo baja un escalón (p.ej. autofagia→cetosis)
+ *   y se marca 🔴, porque el tipo de comida rompe la cetosis aunque el ayuno sea largo.
  */
-export function NutritionChart({ stats }: { stats: NutritionStats }) {
+export function MetabolismChart({ stats }: { stats: NutritionStats }) {
   if (stats.days.length === 0) {
     return (
-      <EmptyText>Registra tus comidas para ver tus ayunos y ventanas de cetosis 🍽️</EmptyText>
+      <EmptyText>
+        Registra tus comidas para ver tu metabolismo diario (glucolisis, cetosis, autofagia) 🍽️
+      </EmptyText>
     );
   }
 
@@ -97,143 +125,136 @@ export function NutritionChart({ stats }: { stats: NutritionStats }) {
   const n = days.length;
   const last = days[n - 1];
   const maxAyuno = Math.max(...days.map((d) => d.ayunoMaxH ?? 0));
-  const yMax = Math.max(20, Math.ceil(maxAyuno + 1));
 
-  // Etiquetas del eje Y (0, 12, 16, yMax) en valores enteros de horas
-  const yTicks = Array.from(new Set([Math.max(0, yMax - 1), yMax]));
-  const tickValues = Array.from(new Set([0, 12, AUTOFAGIA_H, Math.max(12, Math.floor(maxAyuno))].concat(yTicks).filter((t) => t <= yMax))).sort((a, b) => a - b);
+  // Eje Y con un tope un poco por encima del máximo para que la barra respire,
+  // pero nunca por debajo del inicio de autofagia (16 h) para que se distinga.
+  const yMax = Math.max(16, Math.ceil(maxAyuno) + 1);
 
-  const x = (i: number) => NPAD_X + (n === 1 ? 0.5 : i / (n - 1)) * (NW - NPAD_X - 8);
-  const y = (h: number) => NPAD_Y + (1 - h / yMax) * (NH - 2 * NPAD_Y);
+  const plotW = MW - MPAD_L - MPAD_R;
+  const plotH = MH - MPAD_T - MPAD_B;
+  const slot = plotW / Math.max(n, 1);
+  const barW = Math.min(18, slot * 0.6);
 
-  const linePoints = days.map((d, i) => `${x(i)},${y(d.ayunoMaxH ?? 0)}`).join(" ");
-  const areaPath =
-    n > 1
-      ? `M ${x(0)},${NH - NPAD_Y} L ${linePoints.split(" ").join(" L ")} L ${x(n - 1)},${NH - NPAD_Y} Z`
-      : "";
+  const xCenter = (i: number) => MPAD_L + slot * i + slot / 2;
+  const y = (h: number) => MPAD_T + (1 - h / yMax) * plotH;
 
-  const yCet = y(CETOSIS_H);
-  const yAut = y(AUTOFAGIA_H);
+  const yGlu = y(MET_GLUCOLISIS_H);
+  const yAut = y(MET_AUTOFAGIA_H);
 
-  const zoneColor = (h: number): string =>
-    h >= AUTOFAGIA_H ? "#6366f1" : h >= CETOSIS_H ? "#059669" : "#94a3b8";
+  /** Nivel efectivo del día: bajar un escalón si hubo comida no keto. */
+  const effectiveZoneOf = (d: NutritionStats["days"][number]): "autofagia" | "cetosis" | "glucolisis" => {
+    const base = metabolismZone(d.ayunoMaxH);
+    if (!d.noKeto) return base;
+    // Comida no keto: si estaba en autofagia baja a cetosis; si en cetosis baja a glucolisis.
+    if (base === "autofagia") return "cetosis";
+    if (base === "cetosis") return "glucolisis";
+    return "glucolisis";
+  };
+
+  // Altura de la barra: la posición vertical superior corresponde a la zona
+  // efectiva (para que visualmente "llegue" hasta el nivel que corresponde).
+  const effectiveHeight = (d: NutritionStats["days"][number]): number => {
+    const zone = effectiveZoneOf(d);
+    if (zone === "autofagia") return y(MET_AUTOFAGIA_H);
+    if (zone === "cetosis") return y(MET_CETOSIS_H);
+    // glucolisis: dibujar baja (basada en ayuno real, acotada debajo de 12 h)
+    return Math.max(y(MET_GLUCOLISIS_H), y(Math.min(d.ayunoMaxH ?? 0, MET_GLUCOLISIS_H)));
+  };
 
   return (
     <Box>
-      {/* Contexto breve para que se entienda qué muestra */}
+      {/* Contexto breve */}
       <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-        La línea sube con tus ayunos más largos: a partir de <b>12&nbsp;h</b> entras en
-        cetosis 🔥 y desde <b>16&nbsp;h</b> en autofagia 🌀.
+        Una barra por día: muestra hasta dónde llegó tu ayuno. <b>🌀 Autofagia</b> (arriba),{" "}
+        <b>🔥 cetosis</b> (medio) y <b>⚪ glucolisis</b> (abajo, fuera de keto). Una 🔴 marca que
+        comiste algo no KETO (baja un escalón).
       </Typography>
 
       {/* Resumen */}
       <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
-        {stats.ayunoNocturnoPromedioH != null && (
-          <Chip
-            size="small"
-            variant="outlined"
-            label={`🌙 Ayuno nocturno ${fmtH(stats.ayunoNocturnoPromedioH)}`}
-          />
-        )}
-        <Chip size="small" color="success" variant="outlined" label={`🔥 Cetosis ${stats.diasCetosis} d`} />
         <Chip size="small" color="info" variant="outlined" label={`🌀 Autofagia ${stats.diasAutofagia} d`} />
+        <Chip size="small" color="success" variant="outlined" label={`🔥 Cetosis ${stats.diasCetosis} d`} />
         {stats.eventosNoKeto > 0 && (
           <Chip size="small" color="error" variant="outlined" label={`🔴 ${stats.eventosNoKeto} salida de cetosis`} />
         )}
       </Box>
 
-      <svg viewBox={`0 0 ${NW} ${NH}`} width="100%" role="img" aria-label="Ayunos y cetosis por día">
-        {/* Eje Y: etiquetas de horas con gridlines */}
-        {tickValues.map((t) => (
-          <g key={t}>
-            <line x1={NPAD_X} x2={NW - 8} y1={y(t)} y2={y(t)} stroke="#e2e8f0" strokeWidth={1} />
-            <text x={NPAD_X - 4} y={y(t) + 3} textAnchor="end" fontSize={8.5} fill="#94a3b8">
-              {t}h
-            </text>
-          </g>
-        ))}
+      <svg viewBox={`0 0 ${MW} ${MH}`} width="100%" role="img" aria-label="Metabolismo diario (glucolisis, cetosis, autofagia)">
+        {/* Bandas de zonas */}
+        <rect x={MPAD_L} y={y(MET_AUTOFAGIA_H)} width={plotW} height={y(0) - y(MET_AUTOFAGIA_H)} fill={C_AUTOFAGIA} opacity={0.08} />
+        <rect x={MPAD_L} y={y(MET_CETOSIS_H)} width={plotW} height={y(MET_AUTOFAGIA_H) - y(MET_CETOSIS_H)} fill={C_CETOSIS} opacity={0.08} />
+        <rect x={MPAD_L} y={y(MET_GLUCOLISIS_H)} width={plotW} height={y(MET_CETOSIS_H) - y(MET_GLUCOLISIS_H)} fill={C_GLUCOLISIS} opacity={0.08} />
 
-        {/* Bandas de zonas: autofagia (≥16 h) y cetosis (12–16 h) */}
-        <rect x={NPAD_X} y={yAut} width={NW - NPAD_X - 8} height={y(0) - yAut} fill="#6366f1" opacity={0.09} />
-        <rect x={NPAD_X} y={yCet} width={NW - NPAD_X - 8} height={yAut - yCet} fill="#059669" opacity={0.09} />
-        {/* Umbral autofagia */}
-        <line x1={NPAD_X} x2={NW - 8} y1={yAut} y2={yAut} stroke="#6366f1" strokeWidth={1} strokeDasharray="4 4" />
-        <text x={NW - 10} y={yAut - 4} textAnchor="end" fontSize={9} fontWeight={700} fill="#4f46e5">
-          autofagia 16 h
-        </text>
-        {/* Umbral cetosis */}
-        <line x1={NPAD_X} x2={NW - 8} y1={yCet} y2={yCet} stroke="#059669" strokeWidth={1} strokeDasharray="4 4" />
-        <text x={NW - 10} y={yCet + 11} textAnchor="end" fontSize={9} fontWeight={700} fill="#047857">
-          cetosis 12 h
-        </text>
-        {/* Área bajo la curva */}
-        {areaPath && <path d={areaPath} fill="#0d9488" opacity={0.08} />}
-        {/* Línea de ayuno máximo */}
-        {n > 1 && (
-          <polyline
-            points={linePoints}
-            fill="none"
-            stroke="#0d9488"
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
-        {/* Puntos por día: color según zona; 🔴 si hubo salida de cetosis; con hora */}
+        {/* Umbrales horizontales */}
+        <line x1={MPAD_L} x2={MW - MPAD_R} y1={yAut} y2={yAut} stroke={C_AUTOFAGIA} strokeWidth={1} strokeDasharray="3 3" />
+        <line x1={MPAD_L} x2={MW - MPAD_R} y1={yGlu} y2={yGlu} stroke={C_GLUCOLISIS} strokeWidth={1} strokeDasharray="3 3" />
+
+        {/* Barra base de cada día (zona efectiva coloreada) */}
         {days.map((d, i) => {
-          const h = d.ayunoMaxH ?? 0;
-          const label = d.noKeto ? "🔴" : "";
+          const zone = effectiveZoneOf(d);
+          const topY = effectiveHeight(d);
+          const color = zoneColor(zone);
           return (
             <g key={d.date}>
+              <rect
+                x={xCenter(i) - barW / 2}
+                y={topY}
+                width={barW}
+                height={Math.max(2, y(0) - topY)}
+                rx={3}
+                fill={color}
+                opacity={0.85}
+              />
+              {/* Hora de ayuno sobre la barra */}
+              <text
+                x={xCenter(i)}
+                y={topY - 4}
+                textAnchor="middle"
+                fontSize={7.5}
+                fontWeight={700}
+                fill="#64748b"
+              >
+                {d.ayunoMaxH != null ? fmtH(d.ayunoMaxH) : "—"}
+              </text>
+              {/* Marcador de comida no keto */}
               {d.noKeto && (
-                <>
-                  <circle cx={x(i)} cy={y(h)} r={10} fill="#ef4444" opacity={0.15} />
-                  <circle cx={x(i)} cy={y(h)} r={7} fill="none" stroke="#ef4444" strokeWidth={2} />
-                </>
-              )}
-              <circle cx={x(i)} cy={y(h)} r={3.2} fill={zoneColor(h)} stroke="#fff" strokeWidth={1} />
-              {/* Etiqueta de horas sobre el punto (oculta si está muy pegado al borde) */}
-              {y(h) > NPAD_Y + 8 && (
-                <text
-                  x={x(i)}
-                  y={y(h) - 5}
-                  textAnchor="middle"
-                  fontSize={7.5}
-                  fontWeight={700}
-                  fill="#64748b"
-                >
-                  {label}{h}h
+                <text x={xCenter(i)} y={MPAD_T + 4} textAnchor="middle" fontSize={9}>
+                  🔴
                 </text>
               )}
             </g>
           );
         })}
+
+        {/* Etiquetas de zonas en el eje */}
+        <text x={MW - MPAD_R} y={yAut + 9} textAnchor="end" fontSize={8} fontWeight={800} fill="#4f46e5">
+          autofagia 16h
+        </text>
+        <text x={MW - MPAD_R} y={yGlu + 9} textAnchor="end" fontSize={8} fontWeight={800} fill="#047857">
+          cetosis 12h
+        </text>
+        <text x={MW - MPAD_R} y={y(0) - 7} textAnchor="end" fontSize={8} fontWeight={800} fill="#64748b">
+          glucolisis 0h
+        </text>
       </svg>
 
       <Box display="flex" justifyContent="space-between" mt={0.5}>
         <Typography variant="caption" color="text.secondary">
           {fmtDate(days[0].date)} · inicio
         </Typography>
-        <Typography variant="caption" fontWeight={700} sx={{ color: "#0d9488" }}>
-          {fmtDate(last.date)} · ayuno máximo {fmtH(last.ayunoMaxH ?? 0)}
+        <Typography variant="caption" fontWeight={700} sx={{ color: zoneColor(effectiveZoneOf(last)) }}>
+          {fmtDate(last.date)} · {zoneLabel[effectiveZoneOf(last)].replace(/^(🌀|🔥|⚪) /, "")}
+          {last.ayunoMaxH != null ? ` (${fmtH(last.ayunoMaxH)})` : ""}
         </Typography>
       </Box>
 
-      {/* Leyenda de la gráfica */}
+      {/* Leyenda */}
       <Box display="flex" gap={1.5} justifyContent="center" mt={1} flexWrap="wrap">
-        <LegendDot color="#6366f1" text="🌀 autofagia ≥16 h" />
-        <LegendDot color="#059669" text="🔥 cetosis 12–16 h" />
-        <LegendDot color="#ef4444" text="🔴 salida de cetosis" />
+        <LegendDot color={C_AUTOFAGIA} text="🌀 autofagia ≥16 h" />
+        <LegendDot color={C_CETOSIS} text="🔥 cetosis 12–16 h" />
+        <LegendDot color={C_GLUCOLISIS} text="⚪ glucolisis <12 h" />
+        <LegendDot color="#ef4444" text="🔴 no KETO" />
       </Box>
-
-      {stats.ayunoMasLargo && stats.ayunoMasLargo.horas >= 12 && (
-        <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={1}>
-          Tu ayuno más largo: <b>{fmtH(stats.ayunoMasLargo.horas)}</b> el {fmtDate(stats.ayunoMasLargo.date)}{" "}
-          {stats.ayunoMasLargo.horas >= 16
-            ? "(ventana ideal de autofagia)"
-            : "(buena ventana de cetosis)"}
-        </Typography>
-      )}
     </Box>
   );
 }
@@ -376,216 +397,144 @@ export function HydrationChart({
 // ─── Vista General combinada ──────────────────────────────────
 
 const GW = 320;
-const GH = 190;
-const GPAD_L = 30;
-const GPAD_R = 30;
-const GPAD_T = 16;
-const GPAD_B = 14;
+const GH = 165;
+const GPAD_L = 10;
+const GPAD_R = 10;
+const GPAD_T = 18;
+const GPAD_B = 16;
 const C_WEIGHT = "#059669";
-const C_CETO = "#f59e0b";
-const C_WATER = "#0ea5e9";
-const C_NOKETO = "#ef4444";
-const C_MEAL = "#8b5cf6";
 
 interface GeneralChartProps {
   weights: WeightEntry[];
   meals: MealEntry[];
-  liquids: LiquidEntry[];
   targetWeight?: number;
-  objetivoMl?: number;
+  stats?: NutritionStats;
 }
 
 /**
- * Gráfico "General": superpone en un mismo eje de días las métricas del usuario.
- * - Línea principal y gruesa: peso (⚖️, verde).
- * - Línea ámbar en zigzag: horas de ayuno máximo → cetosis/autofagia.
- * - Puntos morados: nº de comidas; rojos: alimento no KETO (salida de cetosis).
- * - Línea celeste: cumplimiento de hidratación (% de la meta diaria).
- * Ejes: izquierda = kg (y horas de ayuno), derecha = % de agua.
+ * Gráfico "General" rediseñado: dos paneles apilados y legibles.
+ * - Panel superior: línea de peso, idéntica a la pestaña Peso (WeightChart),
+ *   con su escala de kg limpia y la línea punteada de objetivo.
+ * - Panel inferior: barras de metabolismo diario (MetabolismChart), con las
+ *   zonas glucolisis / cetosis / autofagia según el ayuno y la comida no keto.
+ * Ya no se superponen escalas incompatibles en un mismo plot.
  */
 export function GeneralMetricsChart({
   weights,
   meals,
-  liquids,
   targetWeight,
-  objetivoMl,
+  stats,
 }: GeneralChartProps) {
-  const { days, startLabel, endLabel } = buildGeneralSeries(
-    weights,
-    meals,
-    liquids,
-    objetivoMl
-  );
+  const series = buildWeightSeries(weights);
+  const nutrition = stats ?? computeNutritionStats(meals);
 
-  const hasWeight = days.some((d) => d.pesoKg != null);
-  const hasMeals = days.some((d) => (d.nComidas ?? 0) > 0 || d.ayunoMaxH != null);
-  const hasWater = days.some((d) => d.ml != null);
+  const hasWeight = series.length > 0;
 
-  if (days.length === 0) {
+  if (!hasWeight && nutrition.days.length === 0) {
     return (
-      <EmptyText>
-        Registra peso, comidas o agua para ver tu resumen general 🎯
-      </EmptyText>
+      <EmptyText>Registra peso y comidas para ver tu resumen general 🎯</EmptyText>
     );
   }
 
-  const n = days.length;
-  const x = (i: number) =>
-    GPAD_L + (n === 1 ? 0.5 : i / (n - 1)) * (GW - GPAD_L - GPAD_R);
-
-  const kgValues = days.map((d) => d.pesoKg).filter((v): v is number => v != null);
-  let minKg = kgValues.length ? Math.min(...kgValues) : 0;
-  let maxKg = kgValues.length ? Math.max(...kgValues) : 1;
+  const values = series.map((p) => p.kg);
+  let minV = values.length ? Math.min(...values) : 0;
+  let maxV = values.length ? Math.max(...values) : 1;
   if (targetWeight != null) {
-    minKg = Math.min(minKg, targetWeight);
-    maxKg = Math.max(maxKg, targetWeight);
+    minV = Math.min(minV, targetWeight);
+    maxV = Math.max(maxV, targetWeight);
   }
-  let kgRange = maxKg - minKg || 1;
-  minKg -= kgRange * 0.1;
-  maxKg += kgRange * 0.1;
-  kgRange = maxKg - minKg;
-  const yKg = (kg: number) => GPAD_T + (1 - (kg - minKg) / kgRange) * (GH - GPAD_T - GPAD_B);
+  let range = maxV - minV || 1;
+  const padV = range * 0.08;
+  minV -= padV;
+  maxV += padV;
+  range = maxV - minV;
 
-  // Ayuno: escala propia (0..max 20+) dentro de la misma área
-  const ayunoValues = days.map((d) => d.ayunoMaxH ?? 0);
-  const ayunoMax = Math.max(12, Math.max(...ayunoValues));
-  const yAyuno = (h: number) => GPAD_T + (1 - h / ayunoMax) * (GH - GPAD_T - GPAD_B);
-  const yAut = yAyuno(16);
-  const yCet = yAyuno(12);
+  const startMs = series.length ? dayjs(series[0].date).valueOf() : 0;
+  const endMs = series.length ? dayjs(series[series.length - 1].date).valueOf() : 1;
+  const spanMs = Math.max(1, endMs - startMs);
+  const xMs = (t: number) => GPAD_L + ((t - startMs) / spanMs) * (GW - GPAD_L - GPAD_R);
+  const x = (i: number) => xMs(dayjs(series[i].date).valueOf());
+  const y = (kg: number) => GPAD_T + (1 - (kg - minV) / range) * (GH - GPAD_T - GPAD_B);
 
-  // Hidratación: escala de % a la derecha
-  const waterMax = Math.max(100, ...days.map((d) => d.pctHidro ?? 0));
-  const yWater = (pct: number) =>
-    GPAD_T + (1 - pct / waterMax) * (GH - GPAD_T - GPAD_B);
-
-  // Máximo de comidas para escalar los puntos morados
-  const maxComidas = Math.max(1, ...days.map((d) => d.nComidas ?? 0));
+  const linePoints = series.map((p, i) => `${x(i)},${y(p.kg)}`).join(" ");
+  const areaPath = hasWeight
+    ? `M ${x(0)},${GH - GPAD_B} L ${linePoints.split(" ").join(" L ")} L ${x(series.length - 1)},${GH - GPAD_B} Z`
+    : "";
+  const wentDown = series.length >= 2 && series[series.length - 1].kg <= series[0].kg;
+  const strokeColor = wentDown ? "#059669" : "#f59e0b";
+  const showKgLabel = (i: number) =>
+    series.length <= 8 || i === 0 || i === series.length - 1;
 
   return (
     <Box>
-      <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
-        {hasWeight && (
-          <Chip size="small" variant="outlined" label={`⚖️ ${days[0].pesoKg ?? "—"}→${days[n - 1].pesoKg ?? "—"} kg`} />
-        )}
-        {hasMeals && (
-          <Chip size="small" color="success" variant="outlined" label="🔥 cetosis / 🌀 autofagia" />
-        )}
-        {hasWater && (
-          <Chip size="small" variant="outlined" label="💧 agua" />
-        )}
-      </Box>
-
-      <svg viewBox={`0 0 ${GW} ${GH}`} width="100%" role="img" aria-label="Resumen general de métricas">
-        {/* Bandas de cetosis/autofagia */}
-        <rect x={GPAD_L} y={yAut} width={GW - GPAD_L - GPAD_R} height={yAyuno(0) - yAut} fill="#6366f1" opacity={0.06} />
-        <rect x={GPAD_L} y={yCet} width={GW - GPAD_L - GPAD_R} height={yAut - yCet} fill="#059669" opacity={0.06} />
-
-        {/* Línea de agua */} 
-        {hasWater && n > 1 && (
-          <polyline
-            points={days.map((d, i) => `${x(i)},${yWater(d.pctHidro ?? 0)}`).join(" ")}
-            fill="none"
-            stroke={C_WATER}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={0.7}
-          />
-        )}
-        {hasWater &&
-          days.map((d, i) => (
-            <circle key={`w${i}`} cx={x(i)} cy={yWater(d.pctHidro ?? 0)} r={2} fill={C_WATER} />
-          ))}
-
-        {/* Línea de ayuno (cetosis) */}
-        {hasMeals && n > 1 && (
-          <polyline
-            points={days.map((d, i) => `${x(i)},${yAyuno(d.ayunoMaxH ?? 0)}`).join(" ")}
-            fill="none"
-            stroke={C_CETO}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
-
-        {/* Puntos de comidas (morados) y no-keto (rojos) */}
-        {hasMeals &&
-          days.map((d, i) => {
-            const hasMealDay = (d.nComidas ?? 0) > 0 || d.ayunoMaxH != null;
-            if (!hasMealDay) return null;
-            const cy = yAyuno(d.ayunoMaxH ?? 0) - (d.noKeto ? 5 : 0);
-            return (
-              <g key={`m${i}`}>
-                {d.noKeto && (
-                  <circle cx={x(i)} cy={cy} r={4} fill={C_NOKETO} stroke="#fff" strokeWidth={1} />
-                )}
-                {(d.nComidas ?? 0) > 0 && (
-                  <circle
-                    cx={x(i)}
-                    cy={cy}
-                    r={2 + (d.nComidas ?? 0) / maxComidas * 2}
-                    fill={C_MEAL}
-                    opacity={0.75}
-                  />
-                )}
-              </g>
-            );
-          })}
-
-        {/* Línea principal de peso */}
-        {hasWeight && n > 1 && (
-          <polyline
-            points={days.map((d, i) => `${x(i)},${yKg(d.pesoKg ?? 0)}`).join(" ")}
-            fill="none"
-            stroke={C_WEIGHT}
-            strokeWidth={3}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
-        {hasWeight &&
-          days.map((d, i) =>
-            d.pesoKg != null ? (
-              <g key={`kg${i}`}>
-                <circle cx={x(i)} cy={yKg(d.pesoKg)} r={3} fill={C_WEIGHT} stroke="#fff" strokeWidth={1} />
-                {i === n - 1 && (
-                  <>
-                    <circle cx={x(i)} cy={yKg(d.pesoKg)} r={7} fill={C_WEIGHT} opacity={0.2} />
-                    <text x={x(i)} y={yKg(d.pesoKg) - 6} textAnchor="middle" fontSize={8} fontWeight={700} fill="#5b7c66">
-                      {d.pesoKg}kg
-                    </text>
-                  </>
-                )}
-              </g>
-            ) : null
+      {/* ── Panel 1: Peso ── */}
+      <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={0.5}>
+        ⚖️ Peso {series.length ? `${series[0].kg} → ${series[series.length - 1].kg} kg` : ""}
+      </Typography>
+      {hasWeight ? (
+        <svg viewBox={`0 0 ${GW} ${GH}`} width="100%" role="img" aria-label="Evolución de peso">
+          {targetWeight != null && (
+            <>
+              <line
+                x1={GPAD_L}
+                x2={GW - GPAD_R}
+                y1={y(targetWeight)}
+                y2={y(targetWeight)}
+                stroke="#94a3b8"
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              <text x={GW - GPAD_R - 2} y={y(targetWeight) - 4} textAnchor="end" fontSize={9} fill="#64748b">
+                objetivo {targetWeight} kg
+              </text>
+            </>
           )}
+          {areaPath && <path d={areaPath} fill={strokeColor} opacity={0.08} />}
+          {series.length > 1 && (
+            <polyline
+              points={linePoints}
+              fill="none"
+              stroke={strokeColor}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+          {series.map((p, i) => (
+            <g key={`${p.date}-${i}`}>
+              {showKgLabel(i) && (
+                <text
+                  x={x(i)}
+                  y={y(p.kg) - 6}
+                  textAnchor="middle"
+                  fontSize={8.5}
+                  fontWeight={700}
+                  fill="#64748b"
+                >
+                  {p.kg}
+                </text>
+              )}
+              {i === series.length - 1 && series.length > 1 ? (
+                <>
+                  <circle cx={x(i)} cy={y(p.kg)} r={4} fill={strokeColor} />
+                  <circle cx={x(i)} cy={y(p.kg)} r={7} fill={strokeColor} opacity={0.2} />
+                </>
+              ) : (
+                <circle cx={x(i)} cy={y(p.kg)} r={3} fill={strokeColor} stroke="#fff" strokeWidth={1} />
+              )}
+            </g>
+          ))}
+        </svg>
+      ) : (
+        <EmptyText>Registra tu peso para ver la evolución 📈</EmptyText>
+      )}
 
-        {/* Umbral cetosis */}
-        {hasMeals && (
-          <>
-            <line x1={GPAD_L} x2={GW - GPAD_R} y1={yCet} y2={yCet} stroke="#059669" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
-            <line x1={GPAD_L} x2={GW - GPAD_R} y1={yAut} y2={yAut} stroke="#6366f1" strokeWidth={1} strokeDasharray="3 3" opacity={0.5} />
-          </>
-        )}
-      </svg>
-
-      <Box display="flex" justifyContent="space-between" mt={0.5}>
-        <Typography variant="caption" color="text.secondary">{startLabel}</Typography>
-        <Typography variant="caption" color="text.secondary">{endLabel}</Typography>
-      </Box>
-
-      {/* Leyenda */}
-      <Box display="flex" gap={1.5} justifyContent="center" mt={1} flexWrap="wrap">
-        {hasWeight && <LegendDot color={C_WEIGHT} text="⚖️ peso" />}
-        {hasMeals && (
-          <>
-            <LegendDot color={C_CETO} text="🔥 ayuno/cetosis" />
-            <LegendDot color={C_MEAL} text="🍽️ comidas" />
-            <LegendDot color={C_NOKETO} text="🔴 no KETO" />
-          </>
-        )}
-        {hasWater && <LegendDot color={C_WATER} text="💧 hidratación" />}
+      {/* ── Panel 2: Metabolismo ── */}
+      <Box mt={2}>
+        <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={0.5}>
+          🔬 Metabolismo diario (a dónde llegó tu ayuno)
+        </Typography>
+        <MetabolismChart stats={nutrition} />
       </Box>
     </Box>
   );

@@ -32,9 +32,9 @@ import WeightChart from "@/components/ui/weightchart";
 import {
   GeneralMetricsChart,
   HydrationChart,
+  MetabolismChart,
   MetricsCarousel,
   MetricHelp,
-  NutritionChart,
 } from "@/components/ui/metricscharts";
 import ShareMetricDialog from "@/components/ui/sharemetricdialog";
 import type { MetricShareData } from "@/components/ui/metricsharecard";
@@ -124,7 +124,7 @@ export default function InicioPage() {
   const helpPesoChart =
     "Evolución de tu peso registrado. La línea punteada es tu meta. Registra peso desde la pestaña Peso o el botón de abajo.";
   const helpAlimChart =
-    "Heurística según tus registros de comida: ~12–14 h sin comer sostiene cetosis 🔥; ≥16 h activa autofagia 🌀. Los 🔴 marcan alimentos no KETO que pueden sacarte de cetosis. Es orientativo, no médico.";
+    "Heurística según tus registros de comida: cada barra es un día y muestra hasta dónde llegó tu ayuno. ⚪ Glucolisis (<12 h, fuera de keto), 🔥 cetosis (12–16 h), 🌀 autofagia (≥16 h). Si comiste algo no KETO (🔴) el nivel baja un escalón. Es orientativo, no médico.";
   const helpHidraChart =
     "Objetivo diario de agua = promedio entre 35 ml × tu peso y (talla cm − 100) × 30. Cumplir ≥80% ayuda a mantener cetosis y evitar retención. Regístralo en 💧.";
 
@@ -416,9 +416,8 @@ export default function InicioPage() {
                     Resumen general
                   </Typography>
                   <MetricHelp>
-                    Vista combinada: la línea verde es tu peso (la principal), la ámbar tu ayuno
-                    (cetosis 🔥 / autofagia 🌀), los puntos morados son comidas, los rojos alimentos
-                    no KETO, y la celeste tu hidratación.
+                    Arriba tu peso (igual que la pestaña Peso) y abajo las barras de metabolismo
+                    diario (a dónde llegó tu ayuno): 🌀 autofagia, 🔥 cetosis, ⚪ glucolisis.
                   </MetricHelp>
                   <IconButton
                     size="small"
@@ -432,9 +431,8 @@ export default function InicioPage() {
                 <GeneralMetricsChart
                   weights={weights}
                   meals={meals}
-                  liquids={liquids}
                   targetWeight={prefs.pesoObjetivoKg}
-                  objetivoMl={hydration.objetivoMl}
+                  stats={nutritionStats}
                 />
               </Box>
             ),
@@ -469,12 +467,12 @@ export default function InicioPage() {
           },
           {
             id: "alimentacion",
-            label: "Alimentación",
+            label: "Metabolismo",
             content: (
               <Box>
                 <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>
-                    Ayunos y cetosis
+                    Metabolismo diario
                   </Typography>
                   <MetricHelp>{helpAlimChart}</MetricHelp>
                   <IconButton
@@ -486,7 +484,7 @@ export default function InicioPage() {
                     <Share fontSize="small" />
                   </IconButton>
                 </Box>
-                <NutritionChart stats={nutritionStats} />
+                <MetabolismChart stats={nutritionStats} />
               </Box>
             ),
           },
