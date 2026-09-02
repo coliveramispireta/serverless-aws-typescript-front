@@ -56,7 +56,10 @@ axiosInstanceLambda.interceptors.request.use(async (config) => {
 axiosInstanceLambda.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const config = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const config = error.config as (InternalAxiosRequestConfig & {
+      _retry?: boolean;
+      _recovered?: boolean;
+    }) | undefined;
     const status = error.response?.status;
 
     // 401 con sesión activa → intentar UNA renovación y reintentar
@@ -73,6 +76,37 @@ axiosInstanceLambda.interceptors.response.use(
       redirectToLoginExpired();
     }
 
+    // Fallo de conexión (no 401): red caída, ERR_NETWORK, CORS o 5xx del gateway
+    // durante un deploy. Fase 1: re-validar la sesión y reintentar una vez.
+    if (config && isConnectionError(error) && !config._recovered) {
+      config._recovered = true;
+      config._retry = true;
+      const fresh = await refreshOnce(); // re-valida sin pedir credenciales
+
+      if (fresh) {
+        config.headers.Authorization = `Bearer ${fresh}`;
+        return axiosInstanceLambda(config); // reintenta la petición
+      }
+
+      // Sin token posible → sesión no recuperable → forzar logout
+      redirectToLoginExpired();
+      return Promise.reject(error);
+    }
+
+    // Fase 2 (fallback): ya se revalidó/reintentó y el fallo de conexión PERSISTE.
+    // Forzamos el cierre de sesión para que el usuario no quede varado en "Sin conexión".
+    if (config?._recovered && isConnectionError(error)) {
+      redirectToLoginExpired();
+    }
+
     return Promise.reject(error);
   }
 );
+
+/** Fallo de conexión/no disponible (a diferencia de un 4xx de negocio válido). */
+function isConnectionError(error: AxiosError): boolean {
+  return (
+    error.response === undefined || // network/ERR_NETWORK/timeout/CORS
+    (typeof error.response?.status === "number" && error.response.status >= 500)
+  );
+}

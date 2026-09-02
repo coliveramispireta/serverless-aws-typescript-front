@@ -158,11 +158,42 @@ export async function verifySignupCode(model: { email: string; password: string;
   }
 }
 
+/**
+ * Purga la sesión residual de Amplify/Cognito del storage.
+ *
+ * Sin esto, si al llegar al login queda una sesión previa firmada, `signIn` /
+ * `signInWithRedirect` fallan con "There is already a signed in user".
+ * NO usamos signOut() (con OAuth redirigiría al logout de Cognito y rompía el
+ * login). Esto borra directamente las claves del storage de Amplify.
+ */
+let amplifyCleared = false;
+function clearAmplifySession() {
+  if (amplifyCleared) return; // idempotente por carga de página
+  amplifyCleared = true;
+  try {
+    const clientId = String((awsConfig as any).aws_user_pools_web_client_id ?? "");
+    const prefix = clientId ? `CognitoIdentityServiceProvider.${clientId}.` : "CognitoIdentityServiceProvider.";
+    for (const store of [window.sessionStorage, window.localStorage]) {
+      const toRemove: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && (k.startsWith(prefix) || k === "LastAuthUser" || k.startsWith("CognitoIdentityServiceProvider"))) {
+          toRemove.push(k);
+        }
+      }
+      toRemove.forEach((k) => store.removeItem(k));
+    }
+  } catch (e) {
+    console.warn("clearAmplifySession:", e);
+  }
+}
+
 export async function loginWithEmail(model: { email: string; password: string }) {
   // ⚠️ NUNCA llamar signOut() aquí: con OAuth configurado REDIRIGE al logout de
   // Cognito y cancelaba el login recién hecho (bug "login exitoso → vuelve al login").
   // Limpieza local únicamente: la nueva sesión reemplaza a la anterior.
   cleanData();
+  clearAmplifySession(); // purga la sesión residual de Amplify/Cognito ("already a signed in user")
   try {
     console.log("model:", model);
     const user = await signIn({
@@ -192,6 +223,7 @@ export async function loginWithGoogle() {
   // ⚠️ Mismo fix que loginWithEmail: sin signOut() previo (redirigía al logout de
   // Cognito y cancelaba el flujo → "vuelve al login").
   cleanData();
+  clearAmplifySession(); // purga la sesión residual de Amplify/Cognito
 
   // Marca del intento: si el hosted UI falla SIN redirigir con ?error=…,
   // /login puede mostrar feedback igualmente (ver useEffect de LoginPage).
