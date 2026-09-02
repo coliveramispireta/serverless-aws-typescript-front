@@ -9,14 +9,17 @@ export interface MetricShareStat {
 
 /** Gráfico opcional que se dibuja dentro del card compartido. */
 export interface MetricShareChartData {
-  kind: "peso" | "metabolismo" | "agua";
+  kind: "peso" | "metabolismo" | "agua" | "general";
   // peso: serie de kg por fecha + objetivo opcional
   points?: { kg: number; date: string }[];
   target?: number;
-  // metabolismo: días con ayuno máximo y si hubo comida no keto
-  days?: { ayunoMaxH?: number; noKeto: boolean }[];
+  // metabolismo: días con ayuno máximo y si hubo comida no keto (date opcional:
+  // solo se necesita para el gráfico combinado "general")
+  days?: { date?: string; ayunoMaxH?: number; noKeto: boolean }[];
   // agua: % de cumplimiento diario
   pct?: number[];
+  // agua con fecha (para el gráfico combinado "general", alineado al eje temporal)
+  water?: { date: string; pct: number }[];
 }
 
 export interface MetricShareData {
@@ -207,7 +210,155 @@ function ChartFor({ chart }: { chart?: MetricShareChartData }) {
   if (chart.kind === "peso") return <PesoMiniChart points={chart.points ?? []} target={chart.target} />;
   if (chart.kind === "metabolismo") return <MetabMiniChart days={chart.days ?? []} />;
   if (chart.kind === "agua") return <AguaMiniChart pct={chart.pct ?? []} />;
+  if (chart.kind === "general")
+    return <GeneralMiniChart points={chart.points ?? []} target={chart.target} days={chart.days ?? []} water={chart.water ?? []} />;
   return null;
+}
+
+/**
+ * Mini-gráfico combinado "General": peso + metabolismo + agua sobre el mismo eje
+ * temporal (inicio → hoy), imitando el gráfico General de la app para el card
+ * compartido. Sin interacción; sirve para el PNG.
+ */
+function GeneralMiniChart({
+  points,
+  target,
+  days,
+  water,
+}: {
+  points: { kg: number; date: string }[];
+  target?: number;
+  days: { date?: string; ayunoMaxH?: number; noKeto: boolean }[];
+  water?: { date: string; pct: number }[];
+}) {
+  const DAY_MS = 1000 * 60 * 60 * 24;
+  const allDates = [
+    ...points.map((p) => p.date),
+    ...days.filter((d) => d.date).map((d) => d.date as string),
+    ...(water ?? []).map((w) => w.date),
+  ];
+  if (allDates.length === 0) return null;
+  let firstDate = allDates[0];
+  let firstMs = new Date(firstDate).getTime();
+  for (const s of allDates) {
+    const ms = new Date(s).getTime();
+    if (ms < firstMs) {
+      firstMs = ms;
+      firstDate = s;
+    }
+  }
+  const tStart = firstMs;
+  const tEnd = Date.now();
+  const spanMs = Math.max(DAY_MS, tEnd - tStart);
+  const plotW = CW - CPAD_L - CPAD_R;
+  const plotH = CH - CPAD_T - CPAD_B;
+  const xByDate = (date: string) =>
+    CPAD_L + ((new Date(date).getTime() - tStart) / spanMs) * plotW;
+  const slot = plotW / Math.max(1, spanMs / DAY_MS);
+  const barW = Math.max(3, Math.min(26, slot * 0.55));
+
+  // Metabolismo (escala 0–24 h)
+  const yAyuno = (h: number) => CPAD_T + (1 - h / 24) * plotH;
+  const y12 = yAyuno(12);
+  const y16 = yAyuno(16);
+  const barTopOf = (d: { ayunoMaxH?: number; noKeto: boolean }): number => {
+    const zone = lowerByNoKeto(metabZone(d.ayunoMaxH), d.noKeto);
+    if (zone === "autofagia") return y16;
+    if (zone === "cetosis") return y12;
+    return Math.max(y12, yAyuno(Math.min(d.ayunoMaxH ?? 0, 12)));
+  };
+  const colorOf = (d: { ayunoMaxH?: number; noKeto: boolean }): string =>
+    generalZoneColor(lowerByNoKeto(metabZone(d.ayunoMaxH), d.noKeto));
+
+  // Peso (kg): eje panorámico (base = meta o piso a 20; tope = máx redondeada a 20)
+  const kgs = points.map((p) => p.kg);
+  const ceil20 = (v: number) => Math.ceil(v / 20) * 20;
+  const floor20 = (v: number) => Math.floor(v / 20) * 20;
+  const rawMinK = kgs.length ? Math.min(...kgs) : 0;
+  const rawMaxK = kgs.length ? Math.max(...kgs) : 1;
+  const minK = target != null ? Math.min(target, floor20(rawMinK)) : floor20(rawMinK);
+  const maxK = Math.max(ceil20(rawMaxK), target ?? ceil20(rawMaxK));
+  const kRange = maxK - minK || 20;
+  const yKg = (kg: number) => CPAD_T + (1 - (kg - minK) / kRange) * plotH;
+
+  // Agua (%)
+  const pcts = (water ?? []).map((w) => w.pct);
+  const waterMax = Math.max(100, ...pcts);
+  const yWater = (p: number) => CPAD_T + (1 - p / waterMax) * plotH;
+
+  const weightPts = points.map((p) => `${xByDate(p.date)},${yKg(p.kg)}`).join(" ");
+  const waterPts = (water ?? []).map((w) => `${xByDate(w.date)},${yWater(w.pct)}`).join(" ");
+  const wentDown = kgs.length >= 2 && kgs[kgs.length - 1] <= kgs[0];
+  const weightColor = wentDown ? "#6ee7b7" : "#fbbf24";
+  const lastP = points.length ? points[points.length - 1] : null;
+
+  return (
+    <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block", width: "100%", height: SVG_RENDER_H }} role="img" aria-label="Resumen general (peso, metabolismo, agua)">
+      {/* Zonas metabólicas */}
+      <rect x={CPAD_L} y={y16} width={plotW} height={yAyuno(0) - y16} fill={C_AUT} opacity={0.12} />
+      <rect x={CPAD_L} y={y12} width={plotW} height={y16 - y12} fill={C_CET} opacity={0.12} />
+      <line x1={CPAD_L} x2={CW - CPAD_R} y1={y16} y2={y16} stroke={C_AUT} strokeWidth={1} strokeDasharray="5 4" opacity={0.6} />
+      <line x1={CPAD_L} x2={CW - CPAD_R} y1={y12} y2={y12} stroke={C_CET} strokeWidth={1} strokeDasharray="5 4" opacity={0.6} />
+      <text x={CPAD_L + 4} y={y16 - 5} fontSize={15} fontWeight={800} fill={C_AUT}>🌀 autofagia</text>
+      <text x={CPAD_L + 4} y={y12 - 5} fontSize={15} fontWeight={800} fill={C_CET}>🔥 cetosis</text>
+
+      {/* Meta de peso */}
+      {target != null && (
+        <>
+          <line x1={CPAD_L} x2={CW - CPAD_R} y1={yKg(target)} y2={yKg(target)} stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} strokeDasharray="6 5" />
+          <text x={CW - CPAD_R} y={yKg(target) - 6} textAnchor="end" fontSize={16} fill="rgba(255,255,255,0.75)" fontWeight={700}>
+            meta {target} kg
+          </text>
+        </>
+      )}
+
+      {/* Barras de metabolismo (detrás del peso) */}
+      {days.map((d, i) => {
+        const date = d.date;
+        if (!date) return null;
+        const top = barTopOf(d);
+        return (
+          <g key={`gm-${i}`}>
+            <rect x={xByDate(date) - barW / 2} y={top} width={barW} height={Math.max(2, yAyuno(0) - top)} rx={4} fill={colorOf(d)} opacity={0.55} />
+            {d.noKeto && <text x={xByDate(date)} y={CPAD_T + 2} textAnchor="middle" fontSize={15}>🔴</text>}
+          </g>
+        );
+      })}
+
+      {/* Agua */}
+      {waterPts && (
+        <>
+          <polyline points={waterPts} fill="none" stroke="#38bdf8" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+          {(water ?? []).map((w, i) => (
+            <circle key={`gw-${i}`} cx={xByDate(w.date)} cy={yWater(w.pct)} r={4} fill="#38bdf8" opacity={0.9} />
+          ))}
+        </>
+      )}
+
+      {/* Peso */}
+      {weightPts && (
+        <>
+          <polyline points={weightPts} fill="none" stroke={weightColor} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((p, i) => (
+            <circle key={`gp-${i}`} cx={xByDate(p.date)} cy={yKg(p.kg)} r={i === points.length - 1 ? 6 : 4.5} fill={weightColor} stroke="#0f172a" strokeWidth={1.5} />
+          ))}
+          {lastP && (
+            <text x={xByDate(lastP.date)} y={yKg(lastP.kg) - 12} textAnchor="middle" fontSize={19} fontWeight={900} fill="#f8fafc">
+              {lastP.kg} kg
+            </text>
+          )}
+        </>
+      )}
+
+      {/* Eje X: inicio → hoy */}
+      <text x={xByDate(firstDate)} y={CH - 2} textAnchor="middle" fontSize={15} fill="rgba(248,250,252,0.6)">
+        {fmtDate2(firstDate)}
+      </text>
+      <text x={CW - CPAD_R} y={CH - 2} textAnchor="middle" fontSize={15} fill="rgba(248,250,252,0.6)">
+        hoy
+      </text>
+    </svg>
+  );
 }
 
 function generalZoneColor(zone: "autofagia" | "cetosis" | "glucolisis"): string {

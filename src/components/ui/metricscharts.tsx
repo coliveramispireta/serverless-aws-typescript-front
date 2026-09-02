@@ -58,6 +58,31 @@ function fmtToday(): string {
   return `${dd}/${mm}`;
 }
 
+/** Clave YYYY-MM-DD de hace 29 días (para el rango "ver solo mes actual"). */
+function cutoffKey29d(): string {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 29);
+  cutoff.setHours(0, 0, 0, 0);
+  return `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
+}
+
+/** Etiquetas del eje X: K fechas equiespaciadas entre tStartMs y tEndMs (ms). La última = "hoy". */
+function dateAxisLabels(tStartMs: number, tEndMs: number, count = 4): { ms: number; label: string }[] {
+  const out: { ms: number; label: string }[] = [];
+  const steps = Math.max(1, count - 1);
+  const span = Math.max(1, tEndMs - tStartMs);
+  for (let i = 0; i < count; i++) {
+    const ms = tStartMs + (span * i) / steps;
+    const d = new Date(ms);
+    const label =
+      i === count - 1
+        ? "hoy"
+        : `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    out.push({ ms, label });
+  }
+  return out;
+}
+
 function fmtH(h: number): string {
   return h % 1 === 0 ? `${h} h` : `${h.toFixed(1)} h`;
 }
@@ -132,25 +157,39 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
 
   const days =
     rango === "mes"
-      ? allDays.slice(-30)
+      ? (() => {
+          const cutKey = cutoffKey29d();
+          const filtered = allDays.filter((d) => d.date >= cutKey);
+          return filtered.length > 0 ? filtered : allDays;
+        })()
       : allDays;
   const n = days.length;
   const last = days[n - 1];
-  const maxAyuno = Math.max(...days.map((d) => d.ayunoMaxH ?? 0));
 
-  // Eje Y con un tope un poco por encima del máximo para que la barra respire,
-  // pero nunca por debajo del inicio de autofagia (16 h) para que se distinga.
-  const yMax = Math.max(16, Math.ceil(maxAyuno) + 1);
+  // Eje Y FIJO de 0 a 24 h (escala completa). Ticks cada 4 h → 0,4,8,12,16,20,24.
+  const yMax = 24;
+  const hourStep = 4;
 
   const plotW = MW - MPAD_L - MPAD_R;
   const plotH = MH - MPAD_T - MPAD_B;
-  const slot = plotW / Math.max(n, 1);
-  const barW = Math.min(18, slot * 0.6);
 
-  const xCenter = (i: number) => MPAD_L + slot * i + slot / 2;
+  // Eje X por fecha real: 1er día del rango = izquierda, HOY = derecha.
+  const DAY_MS = 1000 * 60 * 60 * 24;
+  const tStart = new Date(days[0].date).getTime();
+  const tEnd = Date.now();
+  const spanMs = Math.max(DAY_MS, tEnd - tStart);
+  const xByDate = (date: string) =>
+    MPAD_L + ((new Date(date).getTime() - tStart) / spanMs) * plotW;
+  const daySpanUnits = spanMs / DAY_MS;
+  const slot = plotW / Math.max(1, daySpanUnits);
+  const barW = Math.min(18, slot * 0.6);
+  const xAxisTicks = dateAxisLabels(tStart, tEnd, 4).map((t) => ({
+    x: MPAD_L + ((t.ms - tStart) / spanMs) * plotW,
+    label: t.label,
+  }));
+
   const y = (h: number) => MPAD_T + (1 - h / yMax) * plotH;
 
-  const yGlu = y(MET_GLUCOLISIS_H); // piso visual ("fuera de cetosis")
   const yAut = y(MET_AUTOFAGIA_H);
 
   /** Nivel efectivo del día: bajar un escalón si hubo comida no keto. */
@@ -209,19 +248,28 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
         <line x1={MPAD_L} x2={MW - MPAD_R} y1={yAut} y2={yAut} stroke={C_AUTOFAGIA} strokeWidth={1} strokeDasharray="3 3" />
         <line x1={MPAD_L} x2={MW - MPAD_R} y1={y(MET_CETOSIS_H)} y2={y(MET_CETOSIS_H)} stroke={C_CETOSIS} strokeWidth={1} strokeDasharray="3 3" />
 
-        {/* Eje Y de horas: gridlines en 16h y 12h */}
-        <line x1={MPAD_L} x2={MW - MPAD_R} y1={yAut} y2={yAut} stroke="#e2e8f0" strokeWidth={0.6} opacity={0.7} />
-        <line x1={MPAD_L} x2={MW - MPAD_R} y1={y(MET_CETOSIS_H)} y2={y(MET_CETOSIS_H)} stroke="#e2e8f0" strokeWidth={0.6} opacity={0.7} />
+        {/* Eje Y de horas: ticks numéricos de 0 a 24 h */}
+        {Array.from({ length: Math.floor(yMax / hourStep) + 1 }, (_, k) => {
+          const h = k * hourStep;
+          return (
+            <g key={`mh${h}`}>
+              <line x1={MPAD_L} x2={MW - MPAD_R} y1={y(h)} y2={y(h)} stroke="#e2e8f0" strokeWidth={0.6} opacity={0.7} />
+              <text x={MPAD_L - 3} y={y(h) + 2.5} textAnchor="end" fontSize={7.5} fill="#94a3b8">
+                {h}
+              </text>
+            </g>
+          );
+        })}
 
         {/* Barra base de cada día (zona efectiva coloreada) */}
-        {days.map((d, i) => {
+        {days.map((d) => {
           const zone = effectiveZoneOf(d);
           const topY = effectiveHeight(d);
           const color = zone === "autofagia" ? C_AUTOFAGIA : zone === "cetosis" ? C_CETOSIS : C_GLUCOLISIS;
           return (
             <g key={d.date}>
               <rect
-                x={xCenter(i) - barW / 2}
+                x={xByDate(d.date) - barW / 2}
                 y={topY}
                 width={barW}
                 height={Math.max(2, y(0) - topY)}
@@ -231,7 +279,7 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
               />
               {/* Marcador de comida no keto (glucolisis por comer fuera de keto) */}
               {d.noKeto && (
-                <text x={xCenter(i)} y={MPAD_T + 4} textAnchor="middle" fontSize={9}>
+                <text x={xByDate(d.date)} y={MPAD_T + 4} textAnchor="middle" fontSize={9}>
                   🔴
                 </text>
               )}
@@ -249,6 +297,13 @@ export function MetabolismChart({ stats }: { stats: NutritionStats }) {
         <text x={MW - MPAD_R} y={y(0) - 7} textAnchor="end" fontSize={7.5} fontWeight={700} fill="#94a3b8">
           fuera de cetosis
         </text>
+
+        {/* Eje X: fechas inicio → hoy */}
+        {xAxisTicks.map((t) => (
+          <text key={`mx${t.x}`} x={t.x} y={MH - MPAD_B + 8} textAnchor="middle" fontSize={7.5} fill="#94a3b8">
+            {t.label}
+          </text>
+        ))}
       </svg>
 
       <Box display="flex" justifyContent="space-between" mt={0.5}>
@@ -310,7 +365,14 @@ export function HydrationChart({
     );
   }
 
-  const days = rango === "mes" ? allDays.slice(-30) : allDays;
+  const days =
+    rango === "mes"
+      ? (() => {
+          const cutKey = cutoffKey29d();
+          const filtered = allDays.filter((d) => d.date >= cutKey);
+          return filtered.length > 0 ? filtered : allDays;
+        })()
+      : allDays;
   const n = days.length;
   const last = days[n - 1];
   const values = days.map((d) => d.ml);
@@ -318,7 +380,17 @@ export function HydrationChart({
   const rawMax = Math.max(...values, target);
   const yMax = Math.max(500, Math.ceil(rawMax / 500) * 500);
 
-  const x = (i: number) => HPAD_X + (n === 1 ? 0.5 : i / (n - 1)) * (HW - 2 * HPAD_X);
+  // Eje X por fecha real: inicio → hoy (mismo patrón que el General).
+  const DAY_MS = 1000 * 60 * 60 * 24;
+  const tStart = new Date(days[0].date).getTime();
+  const tEnd = Date.now();
+  const spanMs = Math.max(DAY_MS, tEnd - tStart);
+  const xByDate = (date: string) =>
+    HPAD_X + ((new Date(date).getTime() - tStart) / spanMs) * (HW - 2 * HPAD_X);
+  const xAxisTicks = dateAxisLabels(tStart, tEnd, 4).map((t) => ({
+    x: HPAD_X + ((t.ms - tStart) / spanMs) * (HW - 2 * HPAD_X),
+    label: t.label,
+  }));
   const y = (ml: number) => HPAD_Y + (1 - ml / yMax) * (HH - 2 * HPAD_Y);
 
   // Ticks del eje Y en ml (pasos redondos de 0,5 L)
@@ -330,10 +402,10 @@ export function HydrationChart({
     return ticks.length >= 2 ? ticks : [0, yMax];
   })();
 
-  const linePoints = days.map((d, i) => `${x(i)},${y(d.ml)}`).join(" ");
+  const linePoints = days.map((d) => `${xByDate(d.date)},${y(d.ml)}`).join(" ");
   const areaPath =
     n > 1
-      ? `M ${x(0)},${HH - HPAD_Y} L ${linePoints.split(" ").join(" L ")} L ${x(n - 1)},${HH - HPAD_Y} Z`
+      ? `M ${xByDate(days[0].date)},${HH - HPAD_Y} L ${linePoints.split(" ").join(" L ")} L ${xByDate(days[n - 1].date)},${HH - HPAD_Y} Z`
       : "";
 
   const strokeColor = cumplimiento7d != null ? barColor(cumplimiento7d) : "#0d9488";
@@ -415,10 +487,17 @@ export function HydrationChart({
         {days.map((d, i) => (
           <g key={d.date}>
             {i === n - 1 && (
-              <circle cx={x(i)} cy={y(d.ml)} r={7} fill={strokeColor} opacity={0.2} />
+              <circle cx={xByDate(d.date)} cy={y(d.ml)} r={7} fill={strokeColor} opacity={0.2} />
             )}
-            <circle cx={x(i)} cy={y(d.ml)} r={3.2} fill={barColor(d.pct)} stroke="#fff" strokeWidth={1} />
+            <circle cx={xByDate(d.date)} cy={y(d.ml)} r={3.2} fill={barColor(d.pct)} stroke="#fff" strokeWidth={1} />
           </g>
+        ))}
+
+        {/* Eje X: fechas inicio → hoy */}
+        {xAxisTicks.map((t) => (
+          <text key={`hx${t.x}`} x={t.x} y={HH - HPAD_Y + 8} textAnchor="middle" fontSize={7.5} fill="#94a3b8">
+            {t.label}
+          </text>
         ))}
       </svg>
 
@@ -499,11 +578,9 @@ export function GeneralMetricsChart({
   // "mes" = últimos ~30 días.
   const days = (() => {
     if (rango !== "mes" || allDays.length === 0) return allDays;
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 29);
-    cutoff.setHours(0, 0, 0, 0);
-    const cutKey = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, "0")}-${String(cutoff.getDate()).padStart(2, "0")}`;
-    return allDays.filter((d) => d.date >= cutKey);
+    const cutKey = cutoffKey29d();
+    const filtered = allDays.filter((d) => d.date >= cutKey);
+    return filtered.length > 0 ? filtered : allDays;
   })();
 
   const hasWeight = days.some((d) => d.pesoKg != null);
@@ -535,19 +612,22 @@ export function GeneralMetricsChart({
   const daySpanUnits = spanMs / DAY_MS;
   const barW = Math.min(16, (plotW / Math.max(1, daySpanUnits)) * 0.55);
 
-  // Escala de peso (kg)
+  // Etiquetas de fecha del eje X (inicio → hoy)
+  const xAxisTicks = dateAxisLabels(tStart, tEnd, 4).map((t) => ({
+    x: GPAD_L + ((t.ms - tStart) / spanMs) * plotW,
+    label: t.label,
+  }));
+
+  // Escala de peso (kg): eje panorámico — base = meta (objetivo) o piso redondeado a 20;
+  // tope = máximo redondeado hacia ARRIBA a múltiplos de 20 (102 → 120, 122 → 140).
   const kgVals = days.map((d) => d.pesoKg).filter((v): v is number => v != null);
-  let minV = kgVals.length ? Math.min(...kgVals) : 0;
-  let maxV = kgVals.length ? Math.max(...kgVals) : 1;
-  if (targetWeight != null) {
-    minV = Math.min(minV, targetWeight);
-    maxV = Math.max(maxV, targetWeight);
-  }
-  let range = maxV - minV || 1;
-  const padV = range * 0.08;
-  minV -= padV;
-  maxV += padV;
-  range = maxV - minV;
+  const ceil20 = (v: number) => Math.ceil(v / 20) * 20;
+  const floor20 = (v: number) => Math.floor(v / 20) * 20;
+  const rawMinKg = kgVals.length ? Math.min(...kgVals) : 0;
+  const rawMaxKg = kgVals.length ? Math.max(...kgVals) : 1;
+  const minV = targetWeight != null ? Math.min(targetWeight, floor20(rawMinKg)) : floor20(rawMinKg);
+  const maxV = Math.max(ceil20(rawMaxKg), targetWeight ?? ceil20(rawMaxKg));
+  const range = maxV - minV || 20;
   const yKg = (kg: number) => GPAD_T + (1 - (kg - minV) / range) * plotH;
 
   // Eje Y de peso: ticks "redondos" (paso 1/2/5 ×10^k) que cubran minV..maxV e
@@ -805,6 +885,13 @@ export function GeneralMetricsChart({
             {waterLayer(true)}
           </>
         )}
+
+        {/* Eje X: fechas inicio → hoy */}
+        {xAxisTicks.map((t) => (
+          <text key={`gx${t.x}`} x={t.x} y={GH - GPAD_B + 8} textAnchor="middle" fontSize={7.5} fill="#94a3b8">
+            {t.label}
+          </text>
+        ))}
       </svg>
 
       <Box display="flex" justifyContent="space-between" mt={0.5}>

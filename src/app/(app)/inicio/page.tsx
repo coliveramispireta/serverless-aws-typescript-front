@@ -139,7 +139,17 @@ export default function InicioPage() {
       { label: "Agua 7d", value: hydration.cumplimiento7d != null ? `${hydration.cumplimiento7d}%` : "—" },
     ],
     nombre: userInfo.userName,
-    chart: { kind: "peso", points: buildWeightSeries(weights), target: prefs.pesoObjetivoKg },
+    chart: {
+      kind: "general",
+      points: buildWeightSeries(weights),
+      target: prefs.pesoObjetivoKg,
+      days: nutritionStats.days.map((d) => ({
+        date: d.date,
+        ayunoMaxH: d.ayunoMaxH,
+        noKeto: d.noKeto,
+      })),
+      water: hydration.days.map((d) => ({ date: d.date, pct: d.pct })),
+    },
   });
 
   const buildSharePeso = (): MetricShareData => ({

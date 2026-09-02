@@ -16,6 +16,23 @@ const PAD_X = 30; // margen izquierdo para el eje Y de kg
 const PLOT_TOP = 18; // márgen superior para etiquetas de kg
 const PLOT_BOTTOM = 138; // base del área del peso
 
+/** Etiquetas del eje X: K fechas equiespaciadas entre tStartMs y tEndMs. La última = "hoy". */
+function dateAxisLabels(tStartMs: number, tEndMs: number, count = 4): { ms: number; label: string }[] {
+  const out: { ms: number; label: string }[] = [];
+  const steps = Math.max(1, count - 1);
+  const span = Math.max(1, tEndMs - tStartMs);
+  for (let i = 0; i < count; i++) {
+    const ms = tStartMs + (span * i) / steps;
+    const d = new Date(ms);
+    const label =
+      i === count - 1
+        ? "hoy"
+        : `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    out.push({ ms, label });
+  }
+  return out;
+}
+
 /**
  * Gráfica de evolución de peso (SVG ligero, sin dependencias extras).
  * - Eje X cronológico: los puntos se ubican por su fecha real.
@@ -49,27 +66,30 @@ export default function WeightChart({ weights, targetWeight }: WeightChartProps)
   const useSeries = series.length < 2 ? allSeries : series;
 
   const values = useSeries.map((p) => p.kg);
-  let minV = Math.min(...values);
-  let maxV = Math.max(...values);
-  if (targetWeight != null) {
-    minV = Math.min(minV, targetWeight);
-    maxV = Math.max(maxV, targetWeight);
-  }
-  // Padding vertical (~8%) para que la línea respire y quepan etiquetas
-  let range = maxV - minV || 1;
-  const padV = range * 0.08;
-  minV -= padV;
-  maxV += padV;
-  range = maxV - minV;
+  // Eje Y panorámico: base = meta (objetivo) o piso redondeado a 20; tope = máximo
+  // redondeado hacia ARRIBA a múltiplos de 20 (102 → 120, 122 → 140).
+  const ceil20 = (v: number) => Math.ceil(v / 20) * 20;
+  const floor20 = (v: number) => Math.floor(v / 20) * 20;
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const minV = targetWeight != null ? Math.min(targetWeight, floor20(rawMin)) : floor20(rawMin);
+  const maxV = Math.max(ceil20(rawMax), targetWeight ?? ceil20(rawMax));
+  const range = maxV - minV || 20;
 
-  // Fecha real (ms) de cada punto de peso
+  // Eje X por fecha real: primer peso = izquierda, HOY = derecha.
+  const DAY_MS = 1000 * 60 * 60 * 24;
   const startMs = dayjs(useSeries[0].date).valueOf();
-  const endMs = dayjs(useSeries[useSeries.length - 1].date).valueOf();
-  const spanMs = Math.max(1, endMs - startMs);
+  const endMs = Date.now();
+  const spanMs = Math.max(DAY_MS, endMs - startMs);
 
   const xMs = (t: number) => PAD_X + ((t - startMs) / spanMs) * (W - 2 * PAD_X);
   const x = (i: number) => xMs(dayjs(useSeries[i].date).valueOf());
   const y = (kg: number) => PLOT_TOP + (1 - (kg - minV) / range) * (PLOT_BOTTOM - PLOT_TOP);
+
+  const xAxisTicks = dateAxisLabels(startMs, endMs, 4).map((t) => ({
+    x: xMs(t.ms),
+    label: t.label,
+  }));
 
   const linePoints = useSeries.map((p, i) => `${x(i)},${y(p.kg)}`).join(" ");
   const areaPath = `M ${x(0)},${PLOT_BOTTOM} L ${linePoints.split(" ").join(" L ")} L ${x(
@@ -185,6 +205,13 @@ export default function WeightChart({ weights, targetWeight }: WeightChartProps)
             </g>
           );
         })}
+
+        {/* Eje X: fechas inicio → hoy */}
+        {xAxisTicks.map((t) => (
+          <text key={`wx${t.x}`} x={t.x} y={PLOT_BOTTOM + 8} textAnchor="middle" fontSize={7.5} fill="#94a3b8">
+            {t.label}
+          </text>
+        ))}
       </svg>
 
       <Box display="flex" justifyContent="space-between" mt={0.5}>

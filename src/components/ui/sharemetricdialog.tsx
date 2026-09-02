@@ -143,12 +143,11 @@ export default function ShareMetricDialog({ open, metric, onClose }: ShareMetric
             position: "fixed",
             left: 0,
             top: 0,
-            zIndex: -5,
+            zIndex: -1,
             width: METRIC_CARD_SIZE,
             height: METRIC_CARD_SIZE,
-            opacity: 0,
+            opacity: 1,
             pointerEvents: "none",
-            overflow: "hidden",
           }}
         >
           {preview && <MetricShareCard data={metric} />}
