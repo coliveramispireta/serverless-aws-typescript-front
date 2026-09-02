@@ -51,6 +51,11 @@ import { getAutoMotivation, getAutoRecommendation } from "@/lib/engine/motivatio
 import { evaluateAchievements } from "@/lib/engine/achievements";
 import { buildLocalUserProfile, getProfilePrefs, ProfilePrefs } from "@/lib/profileprefs";
 import { getProfile } from "@/services/keto/profile.service";
+import {
+  listRecommendations,
+  markRecommendationRead,
+} from "@/services/keto/engagement.service";
+import type { Recommendation } from "@/model/keto.models";
 import { getUserInfo } from "@/services/xstorage.cross.service";
 
 /**
@@ -68,6 +73,42 @@ export default function InicioPage() {
   const [pushMsgOk, setPushMsgOk] = useState(false);
   const [openImport, setOpenImport] = useState(false);
   const [shareMetric, setShareMetric] = useState<MetricShareData | null>(null);
+
+  // Recomendaciones del coach (personalizadas). Se filtran las del usuario.
+  const [coachRecs, setCoachRecs] = useState<Recommendation[]>([]);
+  useEffect(() => {
+    if (!userInfo.id) return;
+    let active = true;
+    listRecommendations()
+      .then((recs) => {
+        if (active) {
+          const mine = Array.isArray(recs)
+            ? recs.filter(
+                (r) => r.source === "coach" && r.destinatarioUserId === userInfo.id,
+              )
+            : [];
+          setCoachRecs(mine);
+        }
+      })
+      .catch(() => {
+        // Sin servicio: se conserva la recomendación automática
+      });
+    return () => {
+      active = false;
+    };
+  }, [userInfo.id]);
+
+  // Última recomendación del coach NO leída (las más recientes primero)
+  const pendingCoachRec = coachRecs.find((r) => !r.leida) ?? null;
+
+  const markRead = async (id: string) => {
+    try {
+      await markRecommendationRead(id, true);
+      setCoachRecs((prev) => prev.map((r) => (r.id === id ? { ...r, leida: true } : r)));
+    } catch {
+      // silencioso
+    }
+  };
 
   // Preferencias: locales primero y luego el backend (para que altura/IMC
   // aparezcan en cualquier dispositivo aunque el localStorage esté vacío).
@@ -594,16 +635,25 @@ export default function InicioPage() {
         </CardContent>
       </Card>
 
-      {/* Recomendación automática */}
+      {/* Recomendación (del coach pendiente → si no, automática) */}
       <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
         <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
           <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1} mb={1}>
             <Typography variant="subtitle2" fontWeight={700}>
-              Recomendación
+              {pendingCoachRec ? "Recomendación de tu coach" : "Recomendación"}
             </Typography>
-            <SourceBadge source="auto" />
+            <SourceBadge source={pendingCoachRec ? "coach" : "auto"} />
           </Box>
-          <Typography variant="body2">{recommendation.texto}</Typography>
+          <Typography variant="body2">
+            {pendingCoachRec ? pendingCoachRec.texto : recommendation.texto}
+          </Typography>
+          {pendingCoachRec && (
+            <Box mt={1.5}>
+              <Button size="small" variant="outlined" onClick={() => markRead(pendingCoachRec.id)}>
+                Marcar como leída
+              </Button>
+            </Box>
+          )}
         </CardContent>
       </Card>
 

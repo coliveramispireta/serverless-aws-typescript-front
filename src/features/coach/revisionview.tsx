@@ -17,10 +17,12 @@ import * as ExcelJS from "exceljs";
 
 import EmptyState from "@/components/ui/emptystate";
 import WeightChart from "@/components/ui/weightchart";
+import { HydrationChart, MetabolismChart } from "@/components/ui/metricscharts";
 import dayjs from "dayjs";
 import { getUserProgress, listCoachUsers, UserProgress } from "@/services/keto/coach.service";
 import { CoachUserSummary } from "@/services/keto/coach.service";
 import { LiquidEntry } from "@/model/keto.models";
+import { computeHydrationStats, computeNutritionStats } from "@/lib/engine/metrics";
 import { formatDateForCell, formatTimeForCell, styleHeaderRow } from "@/features/coach/importhelpers";
 
 /**
@@ -83,6 +85,32 @@ export default function CoachRevisionView() {
       }))
       .sort((a, b) => (a.key < b.key ? 1 : -1));
   }, [progress]);
+
+  // Último peso del usuario (para calcular el objetivo de hidratación)
+  const latestPesoKg = useMemo(() => {
+    const ps = progress?.pesos;
+    if (!ps || ps.length === 0) return undefined;
+    return [...ps].sort(
+      (a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime(),
+    )[0].pesoKg;
+  }, [progress]);
+
+  // Métricas de metabolismo (cetosis/autofagia) desde las comidas
+  const nutritional = useMemo(
+    () => computeNutritionStats(progress?.comidas ?? []),
+    [progress],
+  );
+
+  // Métricas de hidratación desde los líquidos (objetivo según peso y altura)
+  const hyd = useMemo(
+    () =>
+      computeHydrationStats(
+        progress?.liquidos ?? [],
+        latestPesoKg,
+        progress?.usuario?.alturaCm,
+      ),
+    [progress, latestPesoKg],
+  );
 
   /** Descarga la data completa del usuario (pesos, comidas, hidratación) en Excel. */
   const handleDownloadExcel = async () => {
@@ -265,7 +293,6 @@ export default function CoachRevisionView() {
               ) : (
                 [...progress.pesos]
                   .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime())
-                  .slice(0, 10)
                   .map((w) => (
                     <Box key={w.id} display="flex" justifyContent="space-between" py={0.8} borderBottom="1px solid" borderColor="AMUltraLightGray.main">
                       <Typography variant="body2">{dayjs(w.fechaHora).format("DD/MM/YYYY HH:mm")}</Typography>
@@ -278,69 +305,92 @@ export default function CoachRevisionView() {
 
           {/* Alimentación */}
           {tab === 1 && (
-            (progress.comidas ?? []).length === 0 ? (
-              <EmptyState emoji="🍽️" title="Sin registros de alimentación" />
-            ) : (
-              [...progress.comidas]
-                .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime())
-                .slice(0, 15)
-                .map((m) => (
-                  <Card key={m.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1 }}>
-                    <CardContent sx={{ p: 1.5, display: "flex", justifyContent: "space-between", "&:last-child": { pb: 1.5 } }}>
-                      <Box>
-                        <Typography variant="body2" fontWeight={700}>{m.alimento}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {dayjs(m.fechaHora).format("DD/MM HH:mm")} · {m.comida ?? "comida"}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2">{m.gramos} g</Typography>
-                    </CardContent>
-                  </Card>
-                ))
-            )
+            <>
+              <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1.5 }}>
+                <CardContent sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                    🧬 Metabolismo (cetosis y autofagia)
+                  </Typography>
+                  <MetabolismChart stats={nutritional} />
+                </CardContent>
+              </Card>
+              {(progress.comidas ?? []).length === 0 ? (
+                <EmptyState emoji="🍽️" title="Sin registros de alimentación" />
+              ) : (
+                [...progress.comidas]
+                  .sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime())
+                  .map((m) => (
+                    <Card key={m.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1 }}>
+                      <CardContent sx={{ p: 1.5, display: "flex", justifyContent: "space-between", "&:last-child": { pb: 1.5 } }}>
+                        <Box>
+                          <Typography variant="body2" fontWeight={700}>{m.alimento}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {dayjs(m.fechaHora).format("DD/MM HH:mm")} · {m.comida ?? "comida"}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2">{m.gramos} g</Typography>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </>
           )}
 
           {/* Hidratación */}
           {tab === 2 && (
-            liquidosPorDia.length === 0 ? (
-              <EmptyState
-                emoji="💧"
-                title="Sin registros de hidratación"
-                description="La hidratación del usuario aparecerá aquí cuando se cargue (p. ej. con la hoja Líquidos de la carga masiva)."
-              />
-            ) : (
-              liquidosPorDia.map((d) => (
-                <Card key={d.key} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1 }}>
-                  <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ textTransform: "capitalize" }}>
-                        {d.label}
-                      </Typography>
-                      <Typography variant="subtitle2" fontWeight={800} color="info.main">
-                        {(d.totalMl / 1000).toLocaleString("es-PE", { maximumFractionDigits: 2 })} L
-                      </Typography>
-                    </Box>
-                    {d.items.map((l) => (
-                      <Box
-                        key={l.id}
-                        display="flex"
-                        justifyContent="space-between"
-                        py={0.6}
-                        borderBottom="1px solid"
-                        borderColor="AMUltraLightGray.main"
-                      >
-                        <Typography variant="body2">
-                          {dayjs(l.fechaHora).format("HH:mm")} · {l.cantidadMl} ml
+            <>
+              <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1.5 }}>
+                <CardContent sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                    💧 Hidratación (cumplimiento)
+                  </Typography>
+                  <HydrationChart
+                    days={hyd.days}
+                    objetivoMl={hyd.objetivoMl}
+                    cumplimiento7d={hyd.cumplimiento7d}
+                  />
+                </CardContent>
+              </Card>
+              {liquidosPorDia.length === 0 ? (
+                <EmptyState
+                  emoji="💧"
+                  title="Sin registros de hidratación"
+                  description="La hidratación del usuario aparecerá aquí cuando se cargue (p. ej. con la hoja Líquidos de la carga masiva)."
+                />
+              ) : (
+                liquidosPorDia.map((d) => (
+                  <Card key={d.key} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 1 }}>
+                    <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                        <Typography variant="subtitle2" fontWeight={700} sx={{ textTransform: "capitalize" }}>
+                          {d.label}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ ml: 2, textAlign: "right" }}>
-                          {l.nota ?? ""}
+                        <Typography variant="subtitle2" fontWeight={800} color="info.main">
+                          {(d.totalMl / 1000).toLocaleString("es-PE", { maximumFractionDigits: 2 })} L
                         </Typography>
                       </Box>
-                    ))}
-                  </CardContent>
-                </Card>
-              ))
-            )
+                      {d.items.map((l) => (
+                        <Box
+                          key={l.id}
+                          display="flex"
+                          justifyContent="space-between"
+                          py={0.6}
+                          borderBottom="1px solid"
+                          borderColor="AMUltraLightGray.main"
+                        >
+                          <Typography variant="body2">
+                            {dayjs(l.fechaHora).format("HH:mm")} · {l.cantidadMl} ml
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 2, textAlign: "right" }}>
+                            {l.nota ?? ""}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </>
           )}
 
           {/* Evidencias */}

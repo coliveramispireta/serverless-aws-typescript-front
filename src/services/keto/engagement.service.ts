@@ -26,6 +26,15 @@ export const createRecommendation = async (
   return response.data;
 };
 
+/** Marcar una recomendación como leída (o no leída) */
+export const markRecommendationRead = async (
+  id: string,
+  leida = true
+): Promise<Recommendation> => {
+  const response = await axiosInstanceLambda.patch(`/recommendations/${id}/read`, { leida });
+  return response.data;
+};
+
 export const listMessages = async (): Promise<MotivationalMessage[]> => {
   const response = await axiosInstanceLambda.get("/messages");
   return response.data;

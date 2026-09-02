@@ -20,11 +20,14 @@ import { signOut } from "aws-amplify/auth";
 
 import SectionHeader from "@/components/ui/sectionheader";
 import usePush from "@/hooks/usepush";
+import dayjs from "dayjs";
 import { buildLocalUserProfile, getProfilePrefs, saveProfilePrefs, ProfilePrefs } from "@/lib/profileprefs";
 import { isCoachEmail } from "@/lib/auth/roles";
 import { normalizeAlturaCm } from "@/lib/engine/metrics";
 import { getProfile, updateProfile } from "@/services/keto/profile.service";
-import { cleanData } from "@/services/xstorage.cross.service";
+import { listRecommendations, markRecommendationRead } from "@/services/keto/engagement.service";
+import type { Recommendation } from "@/model/keto.models";
+import { cleanData, getUserInfo } from "@/services/xstorage.cross.service";
 
 /**
  * Perfil personal: datos de sesión + preferencias (altura y peso objetivo)
@@ -41,6 +44,38 @@ export default function PerfilPage() {
   const coach = isCoachEmail(profile.email);
   const push = usePush();
   const [testResult, setTestResult] = useState<string | null>(null);
+
+  // Recomendaciones del coach (historial personalizado)
+  const userInfo = getUserInfo();
+  const [myRecs, setMyRecs] = useState<Recommendation[]>([]);
+  useEffect(() => {
+    if (!userInfo.id) return;
+    let active = true;
+    listRecommendations()
+      .then((recs) => {
+        if (active) {
+          const mine = Array.isArray(recs)
+            ? recs.filter((r) => r.destinatarioUserId === userInfo.id)
+            : [];
+          setMyRecs(mine);
+        }
+      })
+      .catch(() => {
+        // Sin servicio: se omite la sección
+      });
+    return () => {
+      active = false;
+    };
+  }, [userInfo.id]);
+
+  const markProfileRead = async (id: string) => {
+    try {
+      await markRecommendationRead(id, true);
+      setMyRecs((prev) => prev.map((r) => (r.id === id ? { ...r, leida: true } : r)));
+    } catch {
+      // silencioso
+    }
+  };
 
   // Cargar perfil desde el backend (si está disponible)
   useEffect(() => {
@@ -239,6 +274,44 @@ export default function PerfilPage() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recomendaciones de tu coach */}
+      {myRecs.length > 0 && (
+        <Card elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main", mb: 2 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="subtitle2" fontWeight={700} mb={1}>
+              🧑‍⚕️ Recomendaciones de tu coach
+            </Typography>
+            {[...myRecs]
+              .sort((a, b) => b.fechaCreacion.localeCompare(a.fechaCreacion))
+              .map((r) => (
+                <Box
+                  key={r.id}
+                  py={1}
+                  borderBottom="1px solid"
+                  borderColor="AMUltraLightGray.main"
+                  sx={{ "&:last-child": { borderBottom: "none" } }}
+                >
+                  <Typography variant="body2">{r.texto}</Typography>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.5}>
+                    <Typography variant="caption" color="text.secondary">
+                      {dayjs(r.fechaCreacion).format("DD/MM/YYYY")}
+                    </Typography>
+                    {r.leida ? (
+                      <Typography variant="caption" color="text.disabled">
+                        ✓ Leída
+                      </Typography>
+                    ) : (
+                      <Button size="small" color="primary" onClick={() => markProfileRead(r.id)}>
+                        Marcar como leída
+                      </Button>
+                    )}
+                  </Box>
+                </Box>
+              ))}
           </CardContent>
         </Card>
       )}

@@ -22,8 +22,9 @@ import { listCoachUsers, CoachUserSummary } from "@/services/keto/coach.service"
 import { Recommendation } from "@/model/keto.models";
 
 /**
- * Publicar recomendaciones: generales para el grupo o dirigidas
- * a un usuario específico. Siempre se marcan como contenido del coach.
+ * Publicar recomendaciones PERSONALIZADAS para un usuario específico.
+ * (El contenido general para todo el grupo se hace con publicaciones/flyers,
+ * no con recomendaciones).
  */
 export default function CoachRecomendacionesView() {
   const [texto, setTexto] = useState("");
@@ -46,9 +47,13 @@ export default function CoachRecomendacionesView() {
 
   const handleSend = async () => {
     if (!texto.trim()) return;
+    if (!destinatario) {
+      setSnack({ type: "error", msg: "Elige a qué usuario va dirigida la recomendación" });
+      return;
+    }
     setSending(true);
     try {
-      await createRecommendation(texto.trim(), destinatario || undefined);
+      await createRecommendation(texto.trim(), destinatario);
       setTexto("");
       setDestinatario("");
       setSnack({ type: "success", msg: "Recomendación publicada ✅" });
@@ -92,7 +97,7 @@ export default function CoachRecomendacionesView() {
           />
           <MuiTextField
             select
-            label="Destinatario"
+            label="Destinatario (obligatorio)"
             fullWidth
             size="small"
             value={destinatario}
@@ -100,20 +105,24 @@ export default function CoachRecomendacionesView() {
             sx={{ mt: 2 }}
             SelectProps={{ native: true }}
           >
-            <option value="">Todo el grupo</option>
+            <option value="">— Elige un usuario —</option>
             {users.map((u) => (
               <option key={u.userId} value={u.userId}>
-                {u.nombre}
+                {u.nombre} ({u.email})
               </option>
             ))}
           </MuiTextField>
+          <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+            Las recomendaciones son personales. Para enviar un aviso a todo el grupo usa
+            una publicación (flyer).
+          </Typography>
           <Button
             variant="contained"
             color="secondary"
             endIcon={<SendIcon />}
             fullWidth
             sx={{ mt: 2 }}
-            disabled={sending || !texto.trim()}
+            disabled={sending || !texto.trim() || !destinatario}
             onClick={handleSend}
           >
             {sending ? "Publicando…" : "Publicar recomendación"}
@@ -135,7 +144,7 @@ export default function CoachRecomendacionesView() {
           <Card key={r.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
             <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
               <Box display="flex" justifyContent="space-between" mb={0.5}>
-                <Chip size="small" variant="outlined" label={r.destinatarioUserId ? "Personalizada" : "Para el grupo"} />
+                <Chip size="small" variant="outlined" color="secondary" label="Personalizada" />
                 <Typography variant="caption" color="text.secondary">
                   {new Date(r.fechaCreacion).toLocaleDateString("es-MX")}
                 </Typography>
