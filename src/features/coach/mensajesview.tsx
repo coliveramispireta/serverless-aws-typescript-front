@@ -30,6 +30,8 @@ export default function CoachMensajesView() {
   const [sending, setSending] = useState(false);
   const [snack, setSnack] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [history, setHistory] = useState<MotivationalMessage[] | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const PAGE = 20;
 
   const loadUsers = () =>
     listCoachUsers()
@@ -38,7 +40,10 @@ export default function CoachMensajesView() {
 
   const loadHistory = () =>
     listMessages()
-      .then((data) => setHistory(Array.isArray(data) ? data.filter((m) => m.source === "coach") : []))
+      .then((data) => {
+        setHistory(Array.isArray(data) ? data.filter((m) => m.source === "coach") : []);
+        setVisibleCount(PAGE);
+      })
       .catch(() => setHistory(null));
 
   useEffect(() => {
@@ -131,19 +136,36 @@ export default function CoachMensajesView() {
       ) : history.length === 0 ? (
         <EmptyState emoji="✉️" title="Sin mensajes enviados todavía" />
       ) : (
-        history.map((m) => (
-          <Card key={m.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Box display="flex" justifyContent="space-between" mb={0.5}>
-                <Chip size="small" variant="outlined" label={`Para: ${m.destinatarioUserId ?? "usuario"}`} />
-                <Typography variant="caption" color="text.secondary">
-                  {new Date(m.fechaCreacion).toLocaleDateString("es-MX")}
-                </Typography>
-              </Box>
-              <Typography variant="body2">{m.texto}</Typography>
-            </CardContent>
-          </Card>
-        ))
+        <>
+          {history.slice(0, visibleCount).map((m) => (
+            <Card key={m.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Box display="flex" justifyContent="space-between" mb={0.5}>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    label={`Para: ${m.destinatarioNombre ?? (m.destinatarioUserId ? "usuario" : "grupo")}`}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(m.fechaCreacion).toLocaleDateString("es-MX")}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>{m.texto}</Typography>
+              </CardContent>
+            </Card>
+          ))}
+          {visibleCount < history.length && (
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => setVisibleCount((v) => v + PAGE)}
+              sx={{ mt: 1 }}
+            >
+              Cargar más ({history.length - visibleCount} restantes)
+            </Button>
+          )}
+        </>
       )}
 
       <Snackbar

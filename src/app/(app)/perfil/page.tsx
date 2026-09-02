@@ -295,7 +295,7 @@ export default function PerfilPage() {
                   borderColor="AMUltraLightGray.main"
                   sx={{ "&:last-child": { borderBottom: "none" } }}
                 >
-                  <Typography variant="body2">{r.texto}</Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>{r.texto}</Typography>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mt={0.5}>
                     <Typography variant="caption" color="text.secondary">
                       {dayjs(r.fechaCreacion).format("DD/MM/YYYY")}

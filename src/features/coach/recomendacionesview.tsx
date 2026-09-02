@@ -35,13 +35,18 @@ export default function CoachRecomendacionesView() {
 
   // Historial (si el servicio existe)
   const [history, setHistory] = useState<Recommendation[] | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const PAGE = 20;
 
   useEffect(() => {
     listCoachUsers()
       .then((data) => setUsers(Array.isArray(data) ? data : []))
       .catch(() => setUsers([]));
     listRecommendations()
-      .then((data) => setHistory(Array.isArray(data) ? data : []))
+      .then((data) => {
+        setHistory(Array.isArray(data) ? data : []);
+        setVisibleCount(PAGE);
+      })
       .catch(() => setHistory(null));
   }, []);
 
@@ -140,19 +145,36 @@ export default function CoachRecomendacionesView() {
       ) : history.length === 0 ? (
         <EmptyState emoji="🗂️" title="Aún no has publicado recomendaciones" />
       ) : (
-        history.map((r) => (
-          <Card key={r.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Box display="flex" justifyContent="space-between" mb={0.5}>
-                <Chip size="small" variant="outlined" color="secondary" label="Personalizada" />
-                <Typography variant="caption" color="text.secondary">
-                  {new Date(r.fechaCreacion).toLocaleDateString("es-MX")}
-                </Typography>
-              </Box>
-              <Typography variant="body2">{r.texto}</Typography>
-            </CardContent>
-          </Card>
-        ))
+        <>
+          {history.slice(0, visibleCount).map((r) => (
+            <Card key={r.id} elevation={0} sx={{ border: "1px solid", borderColor: "AMSnowGray.main" }}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Box display="flex" justifyContent="space-between" mb={0.5}>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    label={`Para: ${r.destinatarioNombre ?? (r.destinatarioUserId ? "usuario" : "grupo")}`}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(r.fechaCreacion).toLocaleDateString("es-MX")}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>{r.texto}</Typography>
+              </CardContent>
+            </Card>
+          ))}
+          {visibleCount < history.length && (
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={() => setVisibleCount((v) => v + PAGE)}
+              sx={{ mt: 1 }}
+            >
+              Cargar más ({history.length - visibleCount} restantes)
+            </Button>
+          )}
+        </>
       )}
 
       <Snackbar

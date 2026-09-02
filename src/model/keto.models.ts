@@ -66,6 +66,7 @@ export interface Recommendation {
   texto: string;
   source: ContentSource;
   destinatarioUserId?: string; // si es personalizada
+  destinatarioNombre?: string; // nombre de a quién fue dirigida
   fechaCreacion: string;
   leida?: boolean;
 }
@@ -76,6 +77,7 @@ export interface MotivationalMessage {
   texto: string;
   source: ContentSource;
   destinatarioUserId?: string;
+  destinatarioNombre?: string; // nombre de a quién fue dirigido
   fechaCreacion: string;
   leida?: boolean;
 }

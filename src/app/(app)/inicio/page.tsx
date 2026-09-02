@@ -644,7 +644,7 @@ export default function InicioPage() {
             </Typography>
             <SourceBadge source={pendingCoachRec ? "coach" : "auto"} />
           </Box>
-          <Typography variant="body2">
+          <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
             {pendingCoachRec ? pendingCoachRec.texto : recommendation.texto}
           </Typography>
           {pendingCoachRec && (
