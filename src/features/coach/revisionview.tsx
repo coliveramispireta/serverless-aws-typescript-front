@@ -12,6 +12,8 @@ import {
   TextField as MuiTextField,
   Typography,
 } from "@mui/material";
+import { Download } from "@mui/icons-material";
+import * as ExcelJS from "exceljs";
 
 import EmptyState from "@/components/ui/emptystate";
 import WeightChart from "@/components/ui/weightchart";
@@ -19,6 +21,7 @@ import dayjs from "dayjs";
 import { getUserProgress, listCoachUsers, UserProgress } from "@/services/keto/coach.service";
 import { CoachUserSummary } from "@/services/keto/coach.service";
 import { LiquidEntry } from "@/model/keto.models";
+import { formatDateForCell, formatTimeForCell, styleHeaderRow } from "@/features/coach/importhelpers";
 
 /**
  * Revisión individual: selecciona un usuario y revisa su alimentación,
@@ -32,6 +35,7 @@ export default function CoachRevisionView() {
   const [loadingProgress, setLoadingProgress] = useState(false);
   const [progressError, setProgressError] = useState<string | null>(null);
   const [tab, setTab] = useState(0);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     listCoachUsers()
@@ -80,6 +84,112 @@ export default function CoachRevisionView() {
       .sort((a, b) => (a.key < b.key ? 1 : -1));
   }, [progress]);
 
+  /** Descarga la data completa del usuario (pesos, comidas, hidratación) en Excel. */
+  const handleDownloadExcel = async () => {
+    if (!progress) return;
+    setDownloading(true);
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "KetoApp Coach";
+      wb.created = new Date();
+
+      // ── Hoja Pesos ──
+      const wsP = wb.addWorksheet("Pesos");
+      wsP.columns = [
+        { header: "Fecha", key: "fecha", width: 14 },
+        { header: "Hora", key: "hora", width: 10 },
+        { header: "Peso (kg)", key: "peso", width: 12 },
+        { header: "Evidencia foto URL", key: "foto", width: 40 },
+        { header: "Nota", key: "nota", width: 28 },
+      ];
+      styleHeaderRow(wsP.getRow(1));
+      const pesosSorted = [...(progress.pesos ?? [])].sort(
+        (a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime(),
+      );
+      for (const w of pesosSorted) {
+        const d = new Date(w.fechaHora);
+        wsP.addRow({
+          fecha: formatDateForCell(d),
+          hora: formatTimeForCell(d),
+          peso: w.pesoKg,
+          foto: w.evidenciaFotoUrl ?? "",
+          nota: w.nota ?? "",
+        });
+      }
+
+      // ── Hoja Comidas ──
+      const wsC = wb.addWorksheet("Comidas");
+      wsC.columns = [
+        { header: "Fecha", key: "fecha", width: 14 },
+        { header: "Hora", key: "hora", width: 10 },
+        { header: "Alimento", key: "alimento", width: 30 },
+        { header: "Gramos", key: "gramos", width: 10 },
+        { header: "Tipo de comida", key: "tipo", width: 16 },
+        { header: "Carbohidratos netos (g)", key: "carbos", width: 22 },
+        { header: "Nota", key: "nota", width: 28 },
+      ];
+      styleHeaderRow(wsC.getRow(1));
+      const comidasSorted = [...(progress.comidas ?? [])].sort(
+        (a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime(),
+      );
+      for (const m of comidasSorted) {
+        const d = new Date(m.fechaHora);
+        wsC.addRow({
+          fecha: formatDateForCell(d),
+          hora: formatTimeForCell(d),
+          alimento: m.alimento,
+          gramos: m.gramos,
+          tipo: m.comida ?? "",
+          carbos: m.carbohidratosNetos ?? "",
+          nota: m.nota ?? "",
+        });
+      }
+
+      // ── Hoja Hidratación ──
+      const wsH = wb.addWorksheet("Hidratación");
+      wsH.columns = [
+        { header: "Fecha", key: "fecha", width: 14 },
+        { header: "Hora", key: "hora", width: 10 },
+        { header: "Cantidad (ml)", key: "ml", width: 16 },
+        { header: "Nota", key: "nota", width: 28 },
+      ];
+      styleHeaderRow(wsH.getRow(1));
+      const liquidosSorted = [...(progress.liquidos ?? [])].sort(
+        (a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime(),
+      );
+      for (const l of liquidosSorted) {
+        const d = new Date(l.fechaHora);
+        wsH.addRow({
+          fecha: formatDateForCell(d),
+          hora: formatTimeForCell(d),
+          ml: l.cantidadMl,
+          nota: l.nota ?? "",
+        });
+      }
+
+      // ── Descarga ──
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const nombre =
+        progress.usuario?.nombre
+          ?.normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, "-")
+          .toLowerCase() ?? "usuario";
+      const today = dayjs().format("YYYY-MM-DD");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `datos-${nombre}-${today}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (usersError) {
     return <EmptyState emoji="📡" title="Sin conexión" description={usersError} />;
   }
@@ -104,6 +214,20 @@ export default function CoachRevisionView() {
             </option>
           ))}
         </MuiTextField>
+      )}
+
+      {!loadingProgress && progress && (
+        <Button
+          variant="outlined"
+          size="small"
+          color="primary"
+          onClick={handleDownloadExcel}
+          disabled={downloading}
+          startIcon={<Download />}
+          sx={{ mb: 2 }}
+        >
+          {downloading ? "Generando…" : "Descargar datos (Excel)"}
+        </Button>
       )}
 
       {loadingProgress && <LinearProgress sx={{ borderRadius: 4 }} />}

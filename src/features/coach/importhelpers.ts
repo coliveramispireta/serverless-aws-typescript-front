@@ -95,9 +95,16 @@ export function styleHeaderRow(row: ExcelJS.Row): void {
   });
 }
 
-/** Alias de fecha de la hoja (solo de ejemplo/lectura) */
+/** Fecha local → `dd/mm/yyyy` para celdas de Excel */
 export function formatDateForCell(date: Date): string {
   const d = String(date.getDate()).padStart(2, "0");
   const m = String(date.getMonth() + 1).padStart(2, "0");
   return `${d}/${m}/${date.getFullYear()}`;
+}
+
+/** Hora local del Date → `HH:mm` para celdas de Excel */
+export function formatTimeForCell(date: Date): string {
+  const h = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${min}`;
 }
