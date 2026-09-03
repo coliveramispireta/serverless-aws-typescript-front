@@ -27,7 +27,7 @@ import { normalizeAlturaCm } from "@/lib/engine/metrics";
 import { getProfile, updateProfile } from "@/services/keto/profile.service";
 import { listRecommendations, markRecommendationRead } from "@/services/keto/engagement.service";
 import type { Recommendation } from "@/model/keto.models";
-import { cleanData, getUserInfo } from "@/services/xstorage.cross.service";
+import { cleanData } from "@/services/xstorage.cross.service";
 
 /**
  * Perfil personal: datos de sesión + preferencias (altura y peso objetivo)
@@ -45,28 +45,28 @@ export default function PerfilPage() {
   const push = usePush();
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  // Recomendaciones del coach (historial personalizado)
-  const userInfo = getUserInfo();
+  // Recomendaciones del coach (historial personalizado).
+  // El backend ya devuelve SOLO las del usuario actual (filtra por su sub),
+  // así que no hace falta re-filtrarlas en el frontend contra userInfo.id
+  // (que puede quedar desactualizado y descartar todo en silencio).
   const [myRecs, setMyRecs] = useState<Recommendation[]>([]);
+  const [recsError, setRecsError] = useState(false);
   useEffect(() => {
-    if (!userInfo.id) return;
     let active = true;
     listRecommendations()
       .then((recs) => {
         if (active) {
-          const mine = Array.isArray(recs)
-            ? recs.filter((r) => r.destinatarioUserId === userInfo.id)
-            : [];
-          setMyRecs(mine);
+          setMyRecs(Array.isArray(recs) ? recs : []);
+          setRecsError(false);
         }
       })
       .catch(() => {
-        // Sin servicio: se omite la sección
+        if (active) setRecsError(true);
       });
     return () => {
       active = false;
     };
-  }, [userInfo.id]);
+  }, []);
 
   const markProfileRead = async (id: string) => {
     try {
@@ -274,6 +274,20 @@ export default function PerfilPage() {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error al cargar recomendaciones del coach */}
+      {recsError && (
+        <Card elevation={0} sx={{ border: "1px solid", borderColor: "error.main", mb: 2 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="subtitle2" fontWeight={700} color="error">
+              ⚠️ No se pudieron cargar las recomendaciones
+            </Typography>
+            <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+              Hubo un problema al consultar el servicio. Inténtalo de nuevo más tarde.
+            </Typography>
           </CardContent>
         </Card>
       )}

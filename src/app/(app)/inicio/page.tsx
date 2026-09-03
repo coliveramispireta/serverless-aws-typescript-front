@@ -74,29 +74,30 @@ export default function InicioPage() {
   const [openImport, setOpenImport] = useState(false);
   const [shareMetric, setShareMetric] = useState<MetricShareData | null>(null);
 
-  // Recomendaciones del coach (personalizadas). Se filtran las del usuario.
+  // Recomendaciones del coach (personalizadas). El backend ya devuelve SOLO
+  // las del usuario actual (filtra por su sub), así que solo se conserva el
+  // origen "coach" sin re-filtrar contra userInfo.id (que puede quedar
+  // desactualizado y descartar todo en silencio).
   const [coachRecs, setCoachRecs] = useState<Recommendation[]>([]);
+  const [recsError, setRecsError] = useState(false);
   useEffect(() => {
-    if (!userInfo.id) return;
     let active = true;
     listRecommendations()
       .then((recs) => {
         if (active) {
-          const mine = Array.isArray(recs)
-            ? recs.filter(
-                (r) => r.source === "coach" && r.destinatarioUserId === userInfo.id,
-              )
-            : [];
-          setCoachRecs(mine);
+          setCoachRecs(
+            Array.isArray(recs) ? recs.filter((r) => r.source === "coach") : []
+          );
+          setRecsError(false);
         }
       })
       .catch(() => {
-        // Sin servicio: se conserva la recomendación automática
+        if (active) setRecsError(true);
       });
     return () => {
       active = false;
     };
-  }, [userInfo.id]);
+  }, []);
 
   // Última recomendación del coach NO leída (las más recientes primero)
   const pendingCoachRec = coachRecs.find((r) => !r.leida) ?? null;
@@ -644,9 +645,15 @@ export default function InicioPage() {
             </Typography>
             <SourceBadge source={pendingCoachRec ? "coach" : "auto"} />
           </Box>
-          <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
-            {pendingCoachRec ? pendingCoachRec.texto : recommendation.texto}
-          </Typography>
+          {recsError && !pendingCoachRec ? (
+            <Typography variant="body2" color="error">
+              ⚠️ No se pudieron cargar las recomendaciones del coach.
+            </Typography>
+          ) : (
+            <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+              {pendingCoachRec ? pendingCoachRec.texto : recommendation.texto}
+            </Typography>
+          )}
           {pendingCoachRec && (
             <Box mt={1.5}>
               <Button size="small" variant="outlined" onClick={() => markRead(pendingCoachRec.id)}>
