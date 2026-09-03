@@ -19,6 +19,9 @@ import { listMessages, sendMessageToUser } from "@/services/keto/engagement.serv
 import { listCoachUsers, CoachUserSummary } from "@/services/keto/coach.service";
 import { MotivationalMessage } from "@/model/keto.models";
 
+/** Máx. de caracteres (incluidos espacios) para un MENSAJE personalizado. */
+const MAX_MENSAJE_CHARS = 300;
+
 /**
  * Mensajes personalizados: el coach envía ánimo o indicaciones
  * a un usuario concreto. Se marcan como contenido del coach.
@@ -65,7 +68,9 @@ export default function CoachMensajesView() {
       }
     } catch (err) {
       console.error(err);
-      setSnack({ type: "error", msg: "No se pudo enviar. El servicio aún no está disponible." });
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      setSnack({ type: "error", msg: msg ?? "No se pudo enviar el mensaje." });
     } finally {
       setSending(false);
     }
@@ -113,6 +118,8 @@ export default function CoachMensajesView() {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Ej: ¡Vas muy bien! Recuerda tu cita del viernes…"
+            inputProps={{ maxLength: MAX_MENSAJE_CHARS }}
+            helperText={`${texto.length} / ${MAX_MENSAJE_CHARS} caracteres. Los mensajes son cortos: para un feedback largo usa Recomendaciones.`}
             sx={{ mt: 2 }}
           />
 

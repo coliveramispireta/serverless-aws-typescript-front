@@ -21,6 +21,10 @@ import {
 import { listCoachUsers, CoachUserSummary } from "@/services/keto/coach.service";
 import { Recommendation } from "@/model/keto.models";
 
+/** Máx. de caracteres (incluidos espacios) para una RECOMENDACIÓN/feedback. */
+const MAX_RECOMENDACION_CHARS = 10000;
+
+
 /**
  * Publicar recomendaciones PERSONALIZADAS para un usuario específico.
  * (El contenido general para todo el grupo se hace con publicaciones/flyers,
@@ -71,10 +75,9 @@ export default function CoachRecomendacionesView() {
       }
     } catch (err) {
       console.error(err);
-      setSnack({
-        type: "error",
-        msg: "No se pudo publicar ahora. El servicio aún no está disponible.",
-      });
+      const msg = (err as { response?: { data?: { message?: string } } })?.response
+        ?.data?.message;
+      setSnack({ type: "error", msg: msg ?? "No se pudo publicar la recomendación." });
     } finally {
       setSending(false);
     }
@@ -98,6 +101,8 @@ export default function CoachRecomendacionesView() {
             minRows={3}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
+            inputProps={{ maxLength: MAX_RECOMENDACION_CHARS }}
+            helperText={`${texto.length} / ${MAX_RECOMENDACION_CHARS} caracteres. Aquí sí caben los feedbacks largos.`}
             placeholder="Ej: Aumenta la ingesta de electrolitos estos días…"
           />
           <MuiTextField
